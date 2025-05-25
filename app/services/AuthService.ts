@@ -20,6 +20,7 @@ export const AuthService = {
 
       // Asegúrate que el backend realmente devuelva un campo 'token'.
       if (response.status === 200 && response.data && response.data.token) {
+        console.log('Login exitoso:', response.data);
         return {
           success: true,
           data: {
@@ -33,7 +34,22 @@ export const AuthService = {
           },
         };
       }
-
+      if (response.status === 401) {
+        return {
+          success: false,
+          error:
+            'Credenciales incorrectas. Por favor, verifica tu email y contraseña.',
+          code: 401,
+        };
+      }
+      if (response.status === 403) {
+        return {
+          success: false,
+          error:
+            'El correo electrónico no está verificado. Por favor, verifica tu email antes de iniciar sesión.',
+          code: 403,
+        };
+      }
       return {
         success: false,
         error: response.data?.message || 'Error de autenticación desconocido',

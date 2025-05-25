@@ -34,9 +34,6 @@ type SyncScreenNavigationProp = NativeStackNavigationProp<
 export default function SyncScreen() {
   const navigation = useNavigation<SyncScreenNavigationProp>(); // Usar el nombre de tipo corregido
   const { usuario } = useAuth();
-  const [embarcacionesList, setEmbarcacionesList] = useState<
-    { id: number; nombre: string }[]
-  >([]);
   const [pendingPesajes, setPendingPesajes] = useState<PesajeData[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Para la carga inicial
   const [isSyncing, setIsSyncing] = useState(false); // Para el proceso de sincronización
@@ -48,8 +45,6 @@ export default function SyncScreen() {
     try {
       const items = await getQueuedPesajes();
       setPendingPesajes(items);
-      const embarcacionesData = await EmbarcacionService.getEmbarcaciones();
-      setEmbarcacionesList(embarcacionesData);
     } catch (error) {
       console.error('Error al cargar datos en SyncScreen:', error);
       Alert.alert('Error', 'No se pudieron cargar los datos necesarios.');
@@ -240,11 +235,6 @@ export default function SyncScreen() {
     );
   };
 
-  const getEmbarcacionNombre = (id: number) => {
-    const embarcacion = embarcacionesList.find((e) => e.id === id);
-    return embarcacion ? embarcacion.nombre : `ID: ${id}`;
-  };
-
   const getPersonaNombre = (id: number) => {
     if (usuario && Number(usuario.id) === Number(id)) {
       return usuario.nombre;
@@ -327,7 +317,7 @@ export default function SyncScreen() {
                 style={styles.infoIcon}
               />
               <Text style={styles.infoText}>
-                Embarcación: {getEmbarcacionNombre(p.embarcacionId)}
+                Embarcación: {p.embarcacion?.nombre || 'Desconocido'}
               </Text>
             </View>
             <View style={styles.infoRow}>

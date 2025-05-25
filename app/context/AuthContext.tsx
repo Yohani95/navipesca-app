@@ -12,7 +12,10 @@ import { AuthService } from '../services/AuthService';
 
 interface AuthContextProps {
   usuario: Usuario | null;
-  login: (correo: string, clave: string) => Promise<boolean>;
+  login: (
+    correo: string,
+    clave: string
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>; // Asegurarse que logout aquí también refleje Promise<void>
   loading: boolean;
 }
@@ -68,26 +71,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loadUsuario();
   }, []);
 
-  const login = async (correo: string, clave: string): Promise<boolean> => {
+  const login = async (
+    correo: string,
+    clave: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    // Modified return type
     try {
       console.log('Intentando iniciar sesión con:', correo);
 
       const result = await AuthService.login(correo, clave);
 
       if (result.success && result.data) {
-        // Guardar el usuario en AsyncStorage
         await AsyncStorage.setItem('usuario', JSON.stringify(result.data));
-
-        // Actualizar el estado
         setUsuario(result.data);
-        return true;
+        return { success: true }; // Return success object
       } else {
         console.error('Error de autenticación:', result.error);
-        return false;
+        return {
+          success: false,
+          error: result.error || 'Error de autenticación desconocido',
+        }; // Return error object
       }
-    } catch (error) {
-      console.error('Error en login:', error);
-      return false;
+    } catch (error: any) {
+      console.error('Error en login (catch):', error);
+      return {
+        success: false,
+        error: error.message || 'Ocurrió un error inesperado durante el login.',
+      }; // Return error object
     }
   };
 

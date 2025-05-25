@@ -36,7 +36,6 @@ export default function HistorialPesajesScreen() {
   const isConnected = useNetworkStatus();
   const navigation = useNavigation<HistorialPesajesNavigationProp>(); // Hook de navegación
   const [pesajesDelDia, setPesajesDelDia] = useState<PesajeData[]>([]);
-  const [embarcaciones, setEmbarcaciones] = useState<Embarcacion[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState(''); // Estado para el término de búsqueda
@@ -61,11 +60,9 @@ export default function HistorialPesajesScreen() {
       }
 
       try {
-        const [embarcacionesData, todosLosPesajesApi] = await Promise.all([
-          EmbarcacionService.getEmbarcaciones(),
+        const [todosLosPesajesApi] = await Promise.all([
           isConnected ? PesajeService.getPesajes() : Promise.resolve([]),
         ]);
-        setEmbarcaciones(embarcacionesData);
 
         let pesajesParaMostrar = todosLosPesajesApi;
 
@@ -112,18 +109,6 @@ export default function HistorialPesajesScreen() {
     fetchEmbarcacionesYPesajes(true);
   }, [fetchEmbarcacionesYPesajes]);
 
-  const getEmbarcacionNombre = (id: number) => {
-    const embarcacion = embarcaciones.find((e) => e.id === id);
-    return embarcacion ? embarcacion.nombre : `ID: ${id}`;
-  };
-
-  const getPersonaNombre = (id: number) => {
-    if (usuario && Number(usuario.personaId) === id) {
-      return usuario.nombre;
-    }
-    return `ID: ${id}`;
-  };
-
   const filteredPesajes = useMemo(() => {
     if (!searchTerm.trim()) {
       return pesajesDelDia;
@@ -133,13 +118,13 @@ export default function HistorialPesajesScreen() {
       const tipoPezMatch = p.tipoPez
         .toLowerCase()
         .includes(lowercasedSearchTerm);
-      const embarcacionNombre = getEmbarcacionNombre(
-        p.embarcacionId
-      ).toLowerCase();
-      const embarcacionMatch = embarcacionNombre.includes(lowercasedSearchTerm);
+
+      const embarcacionMatch = p.embarcacion?.nombre
+        .toLowerCase()
+        .includes(lowercasedSearchTerm);
       return tipoPezMatch || embarcacionMatch;
     });
-  }, [pesajesDelDia, searchTerm, embarcaciones]); // Añadir embarcaciones a las dependencias de useMemo
+  }, [pesajesDelDia, searchTerm]);
 
   if (loading && !refreshing) {
     return (
@@ -231,7 +216,7 @@ export default function HistorialPesajesScreen() {
                 style={styles.infoIcon}
               />
               <Text style={styles.infoText}>
-                Embarcación: {getEmbarcacionNombre(p.embarcacionId)}
+                Embarcación: {p.embarcacion?.nombre}
               </Text>
             </View>
             <View style={styles.infoRow}>
@@ -253,10 +238,10 @@ export default function HistorialPesajesScreen() {
                 style={styles.infoIcon}
               />
               <Text style={styles.infoText}>
-                Trabajador: {getPersonaNombre(p.trabajadorId)}
+                Trabajador: {p.trabajador?.name || 'Desconocido'}
               </Text>
             </View>
-            <View style={styles.infoRow}>
+            {/* <View style={styles.infoRow}>
               <Icon
                 name="account-cash-outline"
                 size={16}
@@ -266,7 +251,7 @@ export default function HistorialPesajesScreen() {
               <Text style={styles.infoText}>
                 Comprador: {getPersonaNombre(p.compradorId)}
               </Text>
-            </View>
+            </View> */}
           </View>
 
           <View style={styles.cardFooter}>

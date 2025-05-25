@@ -1,5 +1,8 @@
 # Instrucciones para GitHub Copilot
 
+- responde en español
+- usa un tono profesional
+
 ## 🌊 Proyecto: NaviPesca
 
 NaviPesca es una aplicación que permite registrar **pesajes de pesca artesanal**.

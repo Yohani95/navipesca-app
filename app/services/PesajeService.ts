@@ -17,7 +17,7 @@ export const PesajeService = {
 
   async getPesajes() {
     const response = await apiClient.get(`${controllerPath}`);
-    console.log('Respuesta de getPesajes:', response.data);
+    console.log('Respuesta de getPesajes:', response.data[0]);
     return response.data;
   },
 

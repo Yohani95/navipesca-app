@@ -63,10 +63,14 @@ export default function LoginScreen() {
                   values,
                   { setSubmitting }: FormikHelpers<LoginFormValues>
                 ) => {
-                  const success = await login(values.correo, values.clave);
+                  const result = await login(values.correo, values.clave);
                   setSubmitting(false);
-                  if (!success) {
-                    Alert.alert('Error', 'Credenciales incorrectas');
+                  if (!result.success) {
+                    Alert.alert(
+                      'Error',
+                      result.error ||
+                        'Credenciales incorrectas o error desconocido'
+                    );
                   }
                 }}
               >

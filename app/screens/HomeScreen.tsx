@@ -7,6 +7,8 @@ import {
   ScrollView,
   ImageBackground,
   Animated,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,15 +32,16 @@ const ActionCard: React.FC<ActionCardProps> = ({
   title,
   iconName,
   onPress,
-  color = '#007AFF',
+  color = '#64B5F6',
 }) => {
   const scaleAnim = new Animated.Value(1);
 
   const handlePressIn = () =>
     Animated.spring(scaleAnim, {
-      toValue: 0.96,
+      toValue: 0.97,
       useNativeDriver: true,
     }).start();
+
   const handlePressOut = () =>
     Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
 
@@ -47,13 +50,15 @@ const ActionCard: React.FC<ActionCardProps> = ({
       style={[styles.cardContainer, { transform: [{ scale: scaleAnim }] }]}
     >
       <TouchableOpacity
-        activeOpacity={0.85}
+        activeOpacity={0.7}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[styles.card, { borderTopColor: color }]}
+        style={styles.card}
       >
-        <Icon name={iconName} size={36} color={color} />
+        <View style={styles.iconWrapper}>
+          <Icon name={iconName} size={26} color={color} />
+        </View>
         <Text style={styles.cardTitle}>{title}</Text>
       </TouchableOpacity>
     </Animated.View>
@@ -65,99 +70,112 @@ export default function HomeScreen() {
   const { usuario } = useAuth();
 
   return (
-    <ImageBackground
-      source={require('../../assets/fondo-app-navipesca.png')}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Hola,</Text>
-          <Text style={styles.userName}>
-            {usuario?.nombre?.trim()
-              ? usuario.nombre
-              : 'Bienvenido a NaviPesca'}
-          </Text>
-        </View>
+    <>
+      <StatusBar barStyle="light-content" />
+      <ImageBackground
+        source={require('../../assets/fondo-app-navipesca.png')}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.greeting}>
+              Hola, {usuario?.nombre?.split(' ')[0] || 'Navegante'}
+            </Text>
+            <Text style={styles.subtitle}>¿Qué necesitas hacer hoy?</Text>
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Acciones rápidas</Text>
-          <View style={styles.grid}>
+          <View style={styles.gridContainer}>
             <ActionCard
               title="Registrar Pesaje"
-              iconName="scale-balance"
+              iconName="scale"
               onPress={() => navigation.navigate('Pesaje')}
-              color="#00BFFF"
+              color="#64B5F6" // Azul claro
             />
             <ActionCard
-              title="Pesajes de Hoy"
-              iconName="calendar-check-outline"
+              title="Historial"
+              iconName="history"
               onPress={() => navigation.navigate('HistorialPesajes')}
-              color="#2ECC71"
+              color="#80CBC4" // Verde azulado claro
             />
             <ActionCard
               title="Sincronizar"
               iconName="sync"
               onPress={() => navigation.navigate('Sync')}
-              color="#F39C12"
+              color="#FFD54F" // Amarillo suave
             />
           </View>
-        </View>
-      </ScrollView>
-    </ImageBackground>
+        </ScrollView>
+      </ImageBackground>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   background: {
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 30,
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   header: {
-    marginBottom: 30,
+    marginBottom: 40,
   },
   greeting: {
-    fontSize: 24,
-    color: '#ECF0F1',
-  },
-  userName: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
+    fontSize: 28,
     fontWeight: '600',
-    color: '#ECF0F1',
-    marginBottom: 10,
+    color: '#FFFFFF',
+    marginBottom: 8,
   },
-  grid: {
-    gap: 15,
+  subtitle: {
+    fontSize: 17,
+    fontWeight: '400',
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  gridContainer: {
+    flexDirection: 'column',
+    gap: 16,
   },
   cardContainer: {
-    marginBottom: 10,
+    backgroundColor: 'rgba(10, 30, 50, 0.75)', // Azul marino oscuro semitransparente
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: 'rgba(100, 181, 246, 0.7)', // Borde izquierdo azul claro
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   card: {
-    backgroundColor: '#FFFFFFEE',
-    borderRadius: 15,
     padding: 20,
-    borderTopWidth: 4,
-    elevation: 3,
-    alignItems: 'flex-start',
-    opacity: 0.9,
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  iconWrapper: {
+    width: 42,
+    height: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginTop: 10,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF', // Texto blanco para contraste con el fondo oscuro
+    letterSpacing: 0.2,
   },
 });

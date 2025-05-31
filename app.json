@@ -25,6 +25,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "environment": "development",
+      "updateEndpoint": "https://api.tudominio.com/api/version-check",
+      "buildNumber": "1",
+      "eas": {
+        "projectId": "990f2969-e78b-4425-8b3c-e8f2bbc1cbd4"
+      }
     }
   }
 }

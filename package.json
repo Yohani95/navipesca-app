@@ -31,7 +31,9 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.20.0",
     "yup": "^1.6.1",
-    "zod": "^3.25.17"
+    "zod": "^3.25.17",
+    "expo-updates": "~0.28.13",
+    "expo-constants": "~17.1.6"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

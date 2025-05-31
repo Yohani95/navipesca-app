@@ -25,6 +25,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Importar Icon
 import AsyncStorage from '@react-native-async-storage/async-storage';
+const EMBARCACIONES_CACHE_KEY = 'embarcaciones_cache'; // O impórtalo si está en un archivo común
 
 type SyncScreenNavigationProp = NativeStackNavigationProp<
   // Cambiado el nombre del tipo
@@ -39,12 +40,20 @@ export default function SyncScreen() {
   const [isSyncing, setIsSyncing] = useState(false); // Para el proceso de sincronización
   const [syncingIndices, setSyncingIndices] = useState<number[]>([]);
   const [refreshing, setRefreshing] = useState(false); // Para el pull-to-refresh
-
+  const [listaEmbarcaciones, setListaEmbarcaciones] = useState<
+    { id: number; nombre: string }[]
+  >([]);
   const loadInitialData = useCallback(async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
     try {
       const items = await getQueuedPesajes();
       setPendingPesajes(items);
+      const cachedEmbarcaciones = await AsyncStorage.getItem(
+        EMBARCACIONES_CACHE_KEY
+      );
+      if (cachedEmbarcaciones) {
+        setListaEmbarcaciones(JSON.parse(cachedEmbarcaciones));
+      }
     } catch (error) {
       console.error('Error al cargar datos en SyncScreen:', error);
       Alert.alert('Error', 'No se pudieron cargar los datos necesarios.');
@@ -235,13 +244,11 @@ export default function SyncScreen() {
     );
   };
 
-  const getPersonaNombre = (id: number) => {
-    if (usuario && Number(usuario.id) === Number(id)) {
-      return usuario.nombre;
-    }
-    return `ID: ${id}`;
+  const getEmbarcacionNombreById = (id: number | undefined | null): string => {
+    if (id === null || typeof id === 'undefined') return 'Desconocido';
+    const embarcacion = listaEmbarcaciones.find((e) => e.id === id);
+    return embarcacion ? embarcacion.nombre : `ID: ${id}`;
   };
-
   if (isLoading && !refreshing) {
     return (
       <View style={styles.centeredLoader}>
@@ -317,7 +324,7 @@ export default function SyncScreen() {
                 style={styles.infoIcon}
               />
               <Text style={styles.infoText}>
-                Embarcación: {p.embarcacion?.nombre || 'Desconocido'}
+                Embarcación: {getEmbarcacionNombreById(p.embarcacionId)}
               </Text>
             </View>
             <View style={styles.infoRow}>
@@ -331,7 +338,7 @@ export default function SyncScreen() {
                 Precio Unit.: ${p.precioUnitario.toLocaleString()}
               </Text>
             </View>
-            <View style={styles.infoRow}>
+            {/* <View style={styles.infoRow}>
               <Icon
                 name="account-hard-hat"
                 size={16}
@@ -339,10 +346,10 @@ export default function SyncScreen() {
                 style={styles.infoIcon}
               />
               <Text style={styles.infoText}>
-                Trabajador: {getPersonaNombre(p.trabajadorId)}
+                Trabajador: {p.trabajador?.name || 'Desconocido'}
               </Text>
-            </View>
-            <View style={styles.infoRow}>
+            </View> */}
+            {/* <View style={styles.infoRow}>
               <Icon
                 name="account-cash-outline"
                 size={16}
@@ -352,7 +359,7 @@ export default function SyncScreen() {
               <Text style={styles.infoText}>
                 Comprador: {getPersonaNombre(p.compradorId)}
               </Text>
-            </View>
+            </View> */}
           </View>
           <View style={styles.cardFooter}>
             <Text style={styles.totalAmount}>

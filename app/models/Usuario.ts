@@ -1,3 +1,4 @@
+import { Cliente } from './cliente';
 import { z } from 'zod';
 import { Rol, RolSchema } from './Rol';
 
@@ -13,6 +14,7 @@ export interface Usuario {
   personaId: string; // Usando el mismo ID como personaId
   rolId: number;
   rol?: Rol | null; // Rol puede ser nulo si no se asigna
+  cliente?: Cliente | null; // Cliente puede ser nulo si no se asigna
   image?: string | null;
 }
 export const UsuarioSchema = z.object({

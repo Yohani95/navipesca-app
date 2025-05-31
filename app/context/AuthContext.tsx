@@ -7,8 +7,20 @@ import React, {
   ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Text, View } from 'react-native';
 import { Usuario } from '../models/Usuario';
 import { AuthService } from '../services/AuthService';
+import Constants from 'expo-constants'; // Asegúrate de tener expo-constants instalado
+
+// Usuario de prueba para desarrollo
+// const DEV_USER: Usuario = {
+//   id: 'dev-user-id',
+//   nombre: 'Usuario Desarrollo',
+//   correo: 'dev@example.com',
+//   rol: { nombre: 'ADMIN' }, // O el rol que necesites para probar
+//   token: 'dev-token-123456',
+//   // Añade cualquier otra propiedad requerida por el tipo Usuario
+// };
 
 interface AuthContextProps {
   usuario: Usuario | null;
@@ -16,54 +28,80 @@ interface AuthContextProps {
     correo: string,
     clave: string
   ) => Promise<{ success: boolean; error?: string }>;
-  logout: () => Promise<void>; // Asegurarse que logout aquí también refleje Promise<void>
+  logout: () => Promise<void>;
   loading: boolean;
+  isDevelopment: boolean; // Agregada para que los componentes puedan verificar el modo
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
+// Función para determinar si estamos en entorno de desarrollo
+const isDevelopmentMode = (): boolean => {
+  // __DEV__ es true cuando ejecutas en desarrollo local (metro bundler)
+  return __DEV__;
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
+  const isDevelopment = isDevelopmentMode();
 
   useEffect(() => {
-    console.log('AuthProvider is initializing');
+    console.log(
+      `AuthProvider initializing in ${
+        isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'
+      } mode`
+    );
     const loadUsuario = async () => {
       try {
         const data = await AsyncStorage.getItem('usuario');
+
+        // Si estamos en desarrollo y no hay usuario almacenado, usar el usuario de desarrollo
+        // if (isDevelopment && !data) {
+        //   console.log(
+        //     'Modo desarrollo: Cargando usuario simulado automáticamente'
+        //   );
+        //   await AsyncStorage.setItem('usuario', JSON.stringify(DEV_USER));
+        //   setUsuario(DEV_USER);
+        //   setLoading(false);
+        //   return;
+        // }
+
         if (data) {
           console.log('Usuario encontrado en AsyncStorage');
-          const userData = JSON.parse(data) as Usuario; // Tipar userData
-          // No establecer el usuario aquí todavía, primero validar el token.
-          // setUsuario(userData); // Movido más abajo
+          const userData = JSON.parse(data) as Usuario;
 
           // Validar el token si existe
-          // El token se obtiene de AsyncStorage por el interceptor de apiClient
           if (userData.token) {
-            // Usar validateCurrentToken que no toma argumentos.
-            // El token se adjuntará automáticamente por el interceptor de apiClient.
-            const isValid = await AuthService.validateCurrentToken();
-            if (isValid) {
-              console.log('Token existente es válido. Estableciendo usuario.');
-              setUsuario(userData); // Establecer usuario solo si el token es válido
-            } else {
+            // En desarrollo, siempre considerar el token válido
+            if (isDevelopment) {
               console.log(
-                'Token existente inválido o expirado (según validateCurrentToken). Limpiando...'
+                'Modo desarrollo: Token considerado válido automáticamente'
               );
-              // El interceptor de apiClient ya debería haber llamado a triggerLogout,
-              // que a su vez llama a esta función logout del contexto si está bien configurado.
-              // Pero como medida de seguridad, limpiamos aquí también si la validación inicial falla.
-              await AsyncStorage.removeItem('usuario');
-              setUsuario(null);
+              setUsuario(userData);
+            } else {
+              // En producción, validar el token con el backend
+              const isValid = await AuthService.validateCurrentToken();
+              if (isValid) {
+                console.log(
+                  'Token existente es válido. Estableciendo usuario.'
+                );
+                setUsuario(userData);
+              } else {
+                console.log(
+                  'Token existente inválido o expirado. Limpiando...'
+                );
+                await AsyncStorage.removeItem('usuario');
+                setUsuario(null);
+              }
             }
           } else {
-            // No había token, así que no hay usuario logueado.
             setUsuario(null);
           }
         }
       } catch (error) {
         console.error('Error al cargar usuario desde AsyncStorage:', error);
-        setUsuario(null); // Asegurar que el usuario sea null en caso de error
+        setUsuario(null);
       } finally {
         setLoading(false);
       }
@@ -75,37 +113,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     correo: string,
     clave: string
   ): Promise<{ success: boolean; error?: string }> => {
-    // Modified return type
     try {
-      console.log('Intentando iniciar sesión con:', correo);
+      console.log(
+        `Intentando iniciar sesión con: ${correo} (Modo: ${
+          isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'
+        })`
+      );
 
+      // Si estamos en desarrollo, simular un inicio de sesión exitoso
+      // if (isDevelopment) {
+      //   console.log('Modo desarrollo: Simulando inicio de sesión exitoso');
+
+      //   // Crear un usuario personalizado basado en las credenciales proporcionadas
+      //   // pero manteniendo la estructura del usuario de desarrollo
+      //   const devLoginUser: Usuario = {
+      //     ...DEV_USER,
+      //     correo: correo,
+      //     nombre: `Dev ${correo.split('@')[0]}`, // Usar parte del correo como nombre
+      //   };
+
+      //   await AsyncStorage.setItem('usuario', JSON.stringify(devLoginUser));
+      //   setUsuario(devLoginUser);
+      //   return { success: true };
+      // }
+
+      // En producción, usar el proceso real de login
       const result = await AuthService.login(correo, clave);
 
       if (result.success && result.data) {
         await AsyncStorage.setItem('usuario', JSON.stringify(result.data));
         setUsuario(result.data);
-        return { success: true }; // Return success object
+        return { success: true };
       } else {
         console.error('Error de autenticación:', result.error);
         return {
           success: false,
           error: result.error || 'Error de autenticación desconocido',
-        }; // Return error object
+        };
       }
     } catch (error: any) {
       console.error('Error en login (catch):', error);
       return {
         success: false,
         error: error.message || 'Ocurrió un error inesperado durante el login.',
-      }; // Return error object
+      };
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
-      // Notificar al servidor sobre el logout.
-      // AuthService.logout() ya no necesita el token como argumento.
-      await AuthService.logout();
+      // En producción, notificar al servidor sobre el logout
+      if (!isDevelopment) {
+        await AuthService.logout();
+      } else {
+        console.log('Modo desarrollo: Simulando logout');
+      }
 
       // Limpiar almacenamiento local
       await AsyncStorage.removeItem('usuario');
@@ -117,7 +179,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{ usuario, login, logout, loading, isDevelopment }}
+    >
       {children}
     </AuthContext.Provider>
   );

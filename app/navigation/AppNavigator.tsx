@@ -47,6 +47,17 @@ function CustomDrawerContent(props: any) {
                 >
                   {usuario.email}
                 </Text>
+                {usuario.cliente && (
+                  <View style={styles.clienteBadge}>
+                    <Text
+                      style={styles.drawerClienteText}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      Cliente: {usuario.cliente.nombre}
+                    </Text>
+                  </View>
+                )}
               </>
             ) : (
               <Text style={styles.drawerHeaderText}>NaviPesca</Text>
@@ -284,7 +295,19 @@ const styles = StyleSheet.create({
   drawerEmailText: {
     color: '#E0E0E0',
     fontSize: 12,
-    // No es necesario marginBottom aquí si es el último elemento de texto
+    marginBottom: 4, // Añadir margen inferior para separar del badge de cliente
+  },
+  clienteBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  drawerClienteText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '500',
   },
   logoutButton: {
     // Estilo para el botón de logout

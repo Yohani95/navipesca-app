@@ -36,18 +36,6 @@ export const PesajeSchema = z.object({
     })
     .optional(),
   trabajadorId: z.number({ required_error: 'El trabajador es requerido' }),
-  trabajador: z
-    .object({
-      id: z.number(),
-      name: z.string(),
-    })
-    .optional(),
-  comprador: z
-    .object({
-      id: z.number(),
-      name: z.string(),
-    })
-    .optional(),
   compradorId: z.number({ required_error: 'El comprador es requerido' }),
   bins: z.array(BinPesajeSchema).optional(),
 });

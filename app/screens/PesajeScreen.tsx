@@ -17,6 +17,9 @@ import { EmbarcacionService } from '../services/EmbarcacionService';
 import { PesajeService } from '../services/PesajeService';
 import PesajeForm, { PesajeFormRef } from '../components/PesajeForm'; // Asegúrate que la ruta es correcta
 import { RootStackParamList } from '../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const EMBARCACIONES_CACHE_KEY = 'embarcaciones_cache';
 
 type PesajeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -32,21 +35,56 @@ export default function PesajeScreen() {
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pesajeFormRef = useRef<PesajeFormRef>(null);
+  const [loadingEmbarcaciones, setLoadingEmbarcaciones] = useState(true);
 
   useEffect(() => {
-    const fetchEmbarcaciones = async () => {
+    const gestionarEmbarcaciones = async () => {
+      setLoadingEmbarcaciones(true);
       try {
-        const data = await EmbarcacionService.getEmbarcaciones();
-        setEmbarcaciones(data);
+        // 1. Intentar cargar desde AsyncStorage
+        const cachedEmbarcaciones = await AsyncStorage.getItem(
+          EMBARCACIONES_CACHE_KEY
+        );
+        if (cachedEmbarcaciones) {
+          setEmbarcaciones(JSON.parse(cachedEmbarcaciones));
+        }
+
+        // 2. Si hay conexión, intentar actualizar desde el servicio
+        if (isConnected) {
+          const dataFromService = await EmbarcacionService.getEmbarcaciones();
+          setEmbarcaciones(dataFromService);
+          await AsyncStorage.setItem(
+            EMBARCACIONES_CACHE_KEY,
+            JSON.stringify(dataFromService)
+          );
+        } else if (!cachedEmbarcaciones) {
+          // No hay conexión y no hay datos locales
+          Alert.alert(
+            'Modo sin conexión',
+            'No hay datos de embarcaciones guardados localmente y no se pueden cargar en este momento. No podrá registrar pesajes hasta tener conexión para obtener la lista de embarcaciones.'
+          );
+        }
       } catch (error) {
-        console.error('Error al obtener embarcaciones:', error);
-        Alert.alert('Error', 'No se pudieron cargar las embarcaciones');
+        console.error('Error al gestionar embarcaciones:', error);
+        if (!isConnected && embarcaciones.length === 0) {
+          Alert.alert(
+            'Error de Carga',
+            'No se pudieron cargar las embarcaciones y no hay datos locales. Verifique su conexión o intente más tarde.'
+          );
+        } else if (isConnected) {
+          Alert.alert(
+            'Error de Red',
+            'No se pudieron obtener las embarcaciones del servidor.'
+          );
+        }
+        // Si hay error pero teníamos datos cacheados, se siguen usando esos.
+      } finally {
+        setLoadingEmbarcaciones(false);
       }
     };
 
-    fetchEmbarcaciones();
-  }, []);
-
+    gestionarEmbarcaciones();
+  }, [isConnected]);
   const handleSubmit = async (formDataFromForm: any) => {
     setIsSubmitting(true);
 
@@ -76,8 +114,8 @@ export default function PesajeScreen() {
 
     const pesajePayload = {
       ...processedFormData,
-      trabajadorId: usuario.personaId,
-      compradorId: usuario.personaId,
+      trabajadorId: usuario.nombre,
+      compradorId: usuario.nombre,
       pagado: false,
       metodoPago: null,
     };
@@ -157,20 +195,27 @@ export default function PesajeScreen() {
     navigation.navigate('Sync');
   };
 
+  const isWeb = Platform.OS === 'web';
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.keyboardAvoidingContainer}
+      enabled={!isWeb} // Disable on web as it's not needed
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContentContainer}
+        contentContainerStyle={[
+          styles.scrollContentContainer,
+          isWeb && styles.webScrollContainer,
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <PesajeForm
           ref={pesajeFormRef}
           embarcaciones={embarcaciones}
           onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting || loadingEmbarcaciones}
+          isWeb={isWeb} // Pass isWeb prop to PesajeForm
         />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -184,7 +229,13 @@ const styles = StyleSheet.create({
   },
   scrollContentContainer: {
     flexGrow: 1,
-    paddingHorizontal: 10, // Reducir un poco si las tarjetas tienen su propio padding
+    paddingHorizontal: 10,
     paddingVertical: 15,
+  },
+  webScrollContainer: {
+    // Add web-specific styles for better handling of the scroll container
+    maxWidth: 1200,
+    marginHorizontal: 'auto',
+    width: '100%',
   },
 });

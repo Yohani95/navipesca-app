@@ -30,7 +30,9 @@ export const AuthService = {
             token: response.data.token, // Usar el token del backend
             personaId: response.data.personaId || response.data.id,
             rolId: response.data.rolId,
+            rol: response.data.rol || 'usuario', // Asegúrate de que el backend devuelva el rol
             image: response.data.image,
+            cliente: response.data.cliente || null, // Asegúrate de que el backend devuelva el cliente
           },
         };
       }

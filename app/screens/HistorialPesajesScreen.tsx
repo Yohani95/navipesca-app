@@ -238,7 +238,7 @@ export default function HistorialPesajesScreen() {
                 style={styles.infoIcon}
               />
               <Text style={styles.infoText}>
-                Trabajador: {p.trabajador?.name || 'Desconocido'}
+                Trabajador: {p.trabajadorId || 'Desconocido'}
               </Text>
             </View>
             {/* <View style={styles.infoRow}>

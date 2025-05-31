@@ -81,10 +81,14 @@ interface PesajeFormProps {
   onSubmit: (values: PesajeFormData) => void; // Expects PesajeFormData with totals
   isSubmitting: boolean;
   onSyncPress?: () => void;
+  isWeb?: boolean; // Add isWeb prop to handle web-specific behaviors
 }
 
 const PesajeForm = forwardRef<PesajeFormRef, PesajeFormProps>(
-  ({ embarcaciones, onSubmit, isSubmitting, onSyncPress }, ref) => {
+  (
+    { embarcaciones, onSubmit, isSubmitting, onSyncPress, isWeb = false },
+    ref
+  ) => {
     // const [showDatePicker, setShowDatePicker] = useState(false); // Ya no es necesario
     let formikRef: FormikProps<PesajeFormData> | null = null;
 
@@ -309,9 +313,15 @@ const PesajeForm = forwardRef<PesajeFormRef, PesajeFormProps>(
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>Bins / Chingillos</Text>
                 {/* Formulario para agregar nuevo bin */}
-                <View style={styles.addBinForm}>
+                <View
+                  style={[styles.addBinForm, isWeb && styles.addBinFormWeb]}
+                >
                   <TextInput
-                    style={[styles.input, styles.binInput]}
+                    style={[
+                      styles.input,
+                      styles.binInput,
+                      isWeb && styles.binInputWeb,
+                    ]}
                     placeholder="Código Bin"
                     value={currentBin.codigo}
                     onChangeText={(val) =>
@@ -319,7 +329,11 @@ const PesajeForm = forwardRef<PesajeFormRef, PesajeFormProps>(
                     }
                   />
                   <TextInput
-                    style={[styles.input, styles.binInput]}
+                    style={[
+                      styles.input,
+                      styles.binInput,
+                      isWeb && styles.binInputWeb,
+                    ]}
                     placeholder="P. Bruto (kg)"
                     keyboardType="numeric"
                     value={
@@ -333,7 +347,11 @@ const PesajeForm = forwardRef<PesajeFormRef, PesajeFormProps>(
                     }
                   />
                   <TextInput
-                    style={[styles.input, styles.binInput]}
+                    style={[
+                      styles.input,
+                      styles.binInput,
+                      isWeb && styles.binInputWeb,
+                    ]}
                     placeholder="Tara (kg)"
                     keyboardType="numeric"
                     value={
@@ -350,7 +368,8 @@ const PesajeForm = forwardRef<PesajeFormRef, PesajeFormProps>(
                     style={[
                       styles.pickerWrapper,
                       styles.binInput,
-                      { minWidth: 150 },
+                      isWeb && styles.binInputWeb,
+                      { minWidth: isWeb ? 200 : 150 },
                     ]}
                   >
                     <Picker
@@ -369,9 +388,8 @@ const PesajeForm = forwardRef<PesajeFormRef, PesajeFormProps>(
                     </Picker>
                   </View>
                   <TouchableOpacity
-                    style={styles.addButton}
+                    style={[styles.addButton, isWeb && styles.addButtonWeb]}
                     onPress={handleAddBin}
-                    // disabled // Se elimina la propiedad disabled
                   >
                     <Icon
                       name="plus-circle"
@@ -580,30 +598,23 @@ const styles = StyleSheet.create({
     fontSize: 16, // Ajustar según sea necesario
   },
   addBinForm: {
-    // flexDirection: 'row', // Cambiado para alinear horizontalmente
     alignItems: 'center',
     marginBottom: 15,
     gap: 8,
-    flexWrap: 'wrap', // Para que se ajuste en pantallas pequeñas
+    flexWrap: 'wrap',
+  },
+  addBinFormWeb: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   binInput: {
     flexBasis: '48%',
     minWidth: 120,
-    // Asegurar que los inputs de bin también sigan el nuevo estilo si es necesario
-    // o mantenerlos como están si el layout horizontal es preferido para esta sección.
-    // Por ahora, se mantienen a su estilo actual.
   },
-  addButton: {
-    flexDirection: 'row', // Para alinear icono y texto horizontalmente
-    backgroundColor: '#2ECC71', // Verde
-    paddingVertical: 10, // Ajustar padding vertical
-    paddingHorizontal: 12, // Ajustar padding horizontal
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignSelf: 'flex-end', // Centrar el botón
-    alignItems: 'center',
-    height: 44,
-    elevation: 2, // Sombra ligera
+  binInputWeb: {
+    flexBasis: '22%',
+    minWidth: 150,
   },
   addButtonIcon: {
     marginRight: 6, // Espacio entre icono y texto
@@ -613,6 +624,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 15,
   },
+  addButton: {
+    flexDirection: 'row',
+    backgroundColor: '#2ECC71',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignSelf: 'flex-end',
+    alignItems: 'center',
+    height: 44,
+    elevation: 2,
+  },
+  addButtonWeb: {
+    alignSelf: 'flex-end',
+    marginTop: 10,
+    minWidth: 120,
+  },
+
   binItem: {
     flexDirection: 'row',
     alignItems: 'center',

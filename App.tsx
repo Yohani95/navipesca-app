@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './app/context/AuthContext';
 import AppNavigator from './app/navigation/AppNavigator';
 import { View } from 'react-native';
 import { LogBox } from 'react-native';
 import { setLogoutCallback } from './app/utils/logoutHandler';
+import SplashScreen from './src/components/SplashScreen';
 
 LogBox.ignoreLogs(['Warning: ...']);
 
@@ -41,6 +42,8 @@ const AuthSetup: React.FC = () => {
 };
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     // Aquí puedes poner manejo de errores globales si lo necesitas,
     // pero ErrorUtils puede estar obsoleto. Considera alternativas.
@@ -49,6 +52,11 @@ export default function App() {
     // };
     // ErrorUtils.setGlobalHandler(globalErrorHandler);
   }, []);
+
+  // Renderizamos el contenido basado en el estado de carga
+  if (isLoading) {
+    return <SplashScreen onFinish={() => setIsLoading(false)} />;
+  }
 
   return (
     <AuthProvider>

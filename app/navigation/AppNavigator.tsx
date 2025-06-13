@@ -49,6 +49,12 @@ function CustomDrawerContent(props: any) {
                 </Text>
                 {usuario.cliente && (
                   <View style={styles.clienteBadge}>
+                    <Icon
+                      name="office-building"
+                      size={14}
+                      color="#FFFFFF"
+                      style={{ marginRight: 4 }}
+                    />
                     <Text
                       style={styles.drawerClienteText}
                       numberOfLines={1}
@@ -136,16 +142,69 @@ function AppDrawerNavigator() {
             fontSize: 15,
           },
           drawerItemStyle: {},
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() => {
-                navigation.navigate('Home');
-              }}
-              style={{ marginRight: 15 }}
-            >
-              <Icon name="home" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
-          ),
+          headerRight: () => {
+            const { usuario } = useAuth();
+            return (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginRight: 15,
+                }}
+              >
+                {usuario?.cliente && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      // Solo navegar a Home si NO estamos en la pantalla Home
+                      if (!isHomeScreen) {
+                        navigation.navigate('Home');
+                      }
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: 'rgba(255,255,255,0.2)',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                      marginRight: 10,
+                    }}
+                  >
+                    <Icon
+                      name="office-building"
+                      size={14}
+                      color="#FFFFFF"
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text
+                      style={{
+                        color: '#FFFFFF',
+                        fontSize: 12,
+                        fontWeight: '500',
+                        marginRight: 4,
+                      }}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {usuario.cliente.nombre}
+                    </Text>
+                    {!isHomeScreen && (
+                      <Icon name="arrow-right" size={16} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                )}
+                {!isHomeScreen && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      navigation.navigate('Home');
+                    }}
+                  >
+                    <Icon name="home" size={28} color="#FFFFFF" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          },
         };
       }}
     >
@@ -303,6 +362,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 12,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   drawerClienteText: {
     color: '#FFFFFF',
@@ -326,7 +387,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 20,
     alignItems: 'center',
-    borderTopWidth: 1, // Línea divisoria sutil encima del texto del copyright
+    borderTopWidth: 1, // Línea divisoria sutil encima de todo el footer
     borderTopColor: '#F5F5F5',
   },
   footerText: {

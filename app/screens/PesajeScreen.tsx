@@ -26,6 +26,17 @@ type PesajeScreenNavigationProp = NativeStackNavigationProp<
   'Pesaje'
 >;
 
+// Cross-platform alert function
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    // For web, use browser's alert
+    window.alert(`${title}: ${message}`);
+  } else {
+    // For mobile platforms, use React Native's Alert
+    Alert.alert(title, message);
+  }
+};
+
 export default function PesajeScreen() {
   const { usuario } = useAuth();
   const navigation = useNavigation<PesajeScreenNavigationProp>();
@@ -59,7 +70,7 @@ export default function PesajeScreen() {
           );
         } else if (!cachedEmbarcaciones) {
           // No hay conexión y no hay datos locales
-          Alert.alert(
+          showAlert(
             'Modo sin conexión',
             'No hay datos de embarcaciones guardados localmente y no se pueden cargar en este momento. No podrá registrar pesajes hasta tener conexión para obtener la lista de embarcaciones.'
           );
@@ -67,12 +78,12 @@ export default function PesajeScreen() {
       } catch (error) {
         console.error('Error al gestionar embarcaciones:', error);
         if (!isConnected && embarcaciones.length === 0) {
-          Alert.alert(
+          showAlert(
             'Error de Carga',
             'No se pudieron cargar las embarcaciones y no hay datos locales. Verifique su conexión o intente más tarde.'
           );
         } else if (isConnected) {
-          Alert.alert(
+          showAlert(
             'Error de Red',
             'No se pudieron obtener las embarcaciones del servidor.'
           );
@@ -93,7 +104,7 @@ export default function PesajeScreen() {
       typeof usuario.personaId === 'undefined' ||
       usuario.token === null
     ) {
-      Alert.alert(
+      showAlert(
         'Error de autenticación',
         'No se pudo obtener la información del usuario. Por favor, inicie sesión nuevamente.'
       );
@@ -145,12 +156,12 @@ export default function PesajeScreen() {
       try {
         await addPesajeToQueue(pesajePayload);
         console.log('Pesaje guardado localmente:', pesajePayload);
-        Alert.alert('Guardado local', 'Pesaje guardado sin conexión');
+        showAlert('Guardado local', 'Pesaje guardado sin conexión');
         pesajeFormRef.current?.resetForm();
         navigation.navigate('Home');
       } catch (error) {
         console.error('Error al guardar pesaje localmente:', error);
-        Alert.alert('Error', 'No se pudo guardar el pesaje localmente.');
+        showAlert('Error', 'No se pudo guardar el pesaje localmente.');
       } finally {
         setIsSubmitting(false);
       }
@@ -159,7 +170,7 @@ export default function PesajeScreen() {
 
     try {
       await PesajeService.createPesaje(pesajePayload);
-      Alert.alert('Éxito', 'Pesaje enviado correctamente');
+      showAlert('Éxito', 'Pesaje enviado correctamente');
       pesajeFormRef.current?.resetForm();
       navigation.navigate('Home');
     } catch (error: any) {
@@ -179,7 +190,7 @@ export default function PesajeScreen() {
       } else {
         console.error('Error details:', JSON.stringify(error, null, 2));
       }
-      Alert.alert(
+      showAlert(
         'Error',
         `No se pudo enviar el pesaje. ${
           error.response?.data?.message ||

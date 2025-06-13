@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
-  TouchableOpacity, // Importar TouchableOpacity
+  TouchableOpacity,
+  Platform, // Added Platform API
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native'; // Importar useNavigation
 import { PesajeService } from '../services/PesajeService';
@@ -30,6 +31,17 @@ type HistorialPesajesNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'HistorialPesajes' // Asumiendo que 'HistorialPesajes' es una ruta válida
 >;
+
+// Cross-platform alert function
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    // For web, use browser's alert
+    window.alert(`${title}: ${message}`);
+  } else {
+    // For mobile platforms, use React Native's Alert
+    Alert.alert(title, message);
+  }
+};
 
 export default function HistorialPesajesScreen() {
   const { usuario } = useAuth();
@@ -53,7 +65,7 @@ export default function HistorialPesajesScreen() {
       }
 
       if (!usuario?.token) {
-        Alert.alert('Error', 'Usuario no autenticado.');
+        showAlert('Error', 'Usuario no autenticado.');
         setLoading(false);
         setRefreshing(false);
         return;
@@ -67,7 +79,7 @@ export default function HistorialPesajesScreen() {
         let pesajesParaMostrar = todosLosPesajesApi;
 
         if (!isConnected && !isRefresh) {
-          Alert.alert(
+          showAlert(
             'Modo Offline',
             'Mostrando información limitada. Conéctese para ver todos los pesajes.'
           );
@@ -86,7 +98,7 @@ export default function HistorialPesajesScreen() {
       } catch (error) {
         console.error('Error al obtener datos para historial:', error);
         if (!isRefresh) {
-          Alert.alert('Error', 'No se pudieron cargar los datos.');
+          showAlert('Error', 'No se pudieron cargar los datos.');
         }
       } finally {
         setLoading(false);

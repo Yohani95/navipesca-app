@@ -2,6 +2,7 @@
 
 - responde en español
 - usa un tono profesional
+- esto debe servir para web y móvil(android/iOS)
 
 ## 🌊 Proyecto: NaviPesca
 

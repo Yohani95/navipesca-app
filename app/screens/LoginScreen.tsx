@@ -28,6 +28,17 @@ interface LoginFormValues {
   clave: string;
 }
 
+// Cross-platform alert function
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    // For web, use browser's alert or you could implement a custom modal
+    window.alert(`${title}: ${message}`);
+  } else {
+    // For mobile platforms, use React Native's Alert
+    Alert.alert(title, message);
+  }
+};
+
 export default function LoginScreen() {
   const { login } = useAuth();
   const currentYear = new Date().getFullYear(); // Obtener el año actual
@@ -66,7 +77,7 @@ export default function LoginScreen() {
                   const result = await login(values.correo, values.clave);
                   setSubmitting(false);
                   if (!result.success) {
-                    Alert.alert(
+                    showAlert(
                       'Error',
                       result.error ||
                         'Credenciales incorrectas o error desconocido'

@@ -17,7 +17,7 @@ export const AuthService = {
         email,
         password,
       });
-
+      console.log(response);
       // Asegúrate que el backend realmente devuelva un campo 'token'.
       if (response.status === 200 && response.data && response.data.token) {
         console.log('Login exitoso:', response.data);

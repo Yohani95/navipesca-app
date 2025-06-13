@@ -3,179 +3,342 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  SafeAreaView,
   ScrollView,
-  ImageBackground,
-  Animated,
   Platform,
   StatusBar,
+  ImageBackground,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
+import ActionCard from '../components/ActionCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-type HomeScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'Home'
->;
+const HomeScreen = ({ navigation }: any) => {
+  const { usuario } = useAuth();
 
-interface ActionCardProps {
-  title: string;
-  iconName: string;
-  onPress: () => void;
-  color?: string;
-}
+  const navigationActions = [
+    {
+      title: 'Nuevo Pesaje',
+      iconName: 'scale',
+      color: '#64B5F6',
+      onPress: () => navigation.navigate('Pesaje'),
+    },
+    {
+      title: 'Sincronizar',
+      iconName: 'cloud-sync',
+      color: '#80CBC4',
+      onPress: () => navigation.navigate('Sync'),
+    },
+    {
+      title: 'Historial',
+      iconName: 'history',
+      color: '#FFD54F',
+      onPress: () => navigation.navigate('HistorialPesajes'),
+    },
+  ];
 
-const ActionCard: React.FC<ActionCardProps> = ({
-  title,
-  iconName,
-  onPress,
-  color = '#64B5F6',
-}) => {
-  const scaleAnim = new Animated.Value(1);
-
-  const handlePressIn = () =>
-    Animated.spring(scaleAnim, {
-      toValue: 0.97,
-      useNativeDriver: true,
-    }).start();
-
-  const handlePressOut = () =>
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+  const statsCards = [
+    { label: 'Pesajes Hoy', value: '12', icon: 'chart-line', color: '#3498DB' },
+    {
+      label: 'Total KG',
+      value: '150.000',
+      icon: 'weight-kilogram',
+      color: '#2ECC71',
+    },
+    {
+      label: 'Pendientes',
+      value: '3',
+      icon: 'clock-outline',
+      color: '#E74C3C',
+    },
+  ];
 
   return (
-    <Animated.View
-      style={[styles.cardContainer, { transform: [{ scale: scaleAnim }] }]}
+    <ImageBackground
+      source={require('../../assets/fondo-azul.png')} // Ajusta la ruta según tu imagen
+      style={styles.backgroundImage}
+      resizeMode="cover"
     >
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={styles.card}
-      >
-        <View style={styles.iconWrapper}>
-          <Icon name={iconName} size={26} color={color} />
-        </View>
-        <Text style={styles.cardTitle}>{title}</Text>
-      </TouchableOpacity>
-    </Animated.View>
+      <View style={styles.overlay}>
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="light-content" backgroundColor="#1A237E" />
+
+          {/* Header con gradiente */}
+          {/* <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <View style={styles.welcomeSection}>
+                <Text style={styles.welcomeText}>¡Bienvenido!</Text>
+                <Text style={styles.userName}>
+                  {usuario?.nombre || 'Usuario'}
+                </Text>
+                <View style={styles.roleContainer}>
+                  <Icon name="account-circle" size={16} color="#E3F2FD" />
+                  <Text style={styles.roleText}>Trabajador de Pesca</Text>
+                </View>
+              </View>
+              <View style={styles.headerIcon}>
+                <Icon name="waves" size={40} color="#E3F2FD" />
+              </View>
+            </View>
+          </View> */}
+
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Cards de estadísticas */}
+            <View style={styles.statsSection}>
+              <Text style={styles.sectionTitle}>Resumen de Hoy</Text>
+              <View style={styles.statsGrid}>
+                {statsCards.map((stat, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.statCard,
+                      {
+                        borderLeftColor: stat.color,
+                        padding: 10,
+                        marginHorizontal: 2,
+                      },
+                    ]}
+                  >
+                    <View style={styles.statHeader}>
+                      <Icon name={stat.icon} size={20} color={stat.color} />
+                      <Text style={[styles.statValue, { fontSize: 11 }]}>
+                        {stat.value}
+                      </Text>
+                    </View>
+                    <Text style={[styles.statLabel, { fontSize: 10 }]}>
+                      {stat.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Acciones principales */}
+            <View style={styles.actionsSection}>
+              <Text style={styles.sectionTitle}>Acciones Principales</Text>
+              <View style={styles.actionsGrid}>
+                {navigationActions.map((action, index) => (
+                  <View key={index} style={styles.actionCardWrapper}>
+                    <ActionCard
+                      title={action.title}
+                      iconName={action.iconName}
+                      onPress={action.onPress}
+                      color={action.color}
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Información adicional */}
+            <View style={styles.infoSection}>
+              <View style={styles.infoCard}>
+                <Icon name="information-outline" size={24} color="#64B5F6" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoTitle}>Modo Offline Activado</Text>
+                  <Text style={styles.infoDescription}>
+                    Los pesajes se guardarán localmente hasta que tengas
+                    conexión
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </ImageBackground>
   );
 };
 
-export default function HomeScreen() {
-  const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { usuario } = useAuth();
-
-  return (
-    <>
-      <StatusBar barStyle="light-content" />
-      <ImageBackground
-        source={require('../../assets/fondo-app-navipesca.png')}
-        style={styles.background}
-        resizeMode="cover"
-      >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <Text style={styles.greeting}>
-              Hola, {usuario?.nombre?.split(' ')[0] || 'Navegante'}
-            </Text>
-            <Text style={styles.subtitle}>¿Qué necesitas hacer hoy?</Text>
-          </View>
-
-          <View style={styles.gridContainer}>
-            <ActionCard
-              title="Registrar Pesaje"
-              iconName="scale"
-              onPress={() => navigation.navigate('Pesaje')}
-              color="#64B5F6" // Azul claro
-            />
-            <ActionCard
-              title="Historial"
-              iconName="history"
-              onPress={() => navigation.navigate('HistorialPesajes')}
-              color="#80CBC4" // Verde azulado claro
-            />
-            <ActionCard
-              title="Sincronizar"
-              iconName="sync"
-              onPress={() => navigation.navigate('Sync')}
-              color="#FFD54F" // Amarillo suave
-            />
-          </View>
-        </ScrollView>
-      </ImageBackground>
-    </>
-  );
-}
-
 const styles = StyleSheet.create({
-  background: {
+  backgroundImage: {
     flex: 1,
     width: '100%',
     height: '100%',
   },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Overlay semi-transparente para mejorar legibilidad
+  },
   container: {
-    flexGrow: 1,
-    padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    flex: 1,
   },
   header: {
-    marginBottom: 40,
+    backgroundColor: 'rgba(26, 35, 126, 0.9)', // Más transparente para mostrar la imagen
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    paddingBottom: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#1A237E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        background:
+          'linear-gradient(135deg, rgba(26, 35, 126, 0.9) 0%, rgba(57, 73, 171, 0.9) 100%)',
+        boxShadow: '0 4px 20px rgba(26, 35, 126, 0.3)',
+      },
+    }),
   },
-  greeting: {
-    fontSize: 28,
-    fontWeight: '600',
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  welcomeSection: {
+    flex: 1,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#E3F2FD',
+    marginBottom: 4,
+    fontWeight: '400',
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 17,
-    fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.8)',
+  roleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  gridContainer: {
-    flexDirection: 'column',
-    gap: 16,
+  roleText: {
+    fontSize: 14,
+    color: '#E3F2FD',
+    marginLeft: 6,
+    fontWeight: '500',
   },
-  cardContainer: {
-    backgroundColor: 'rgba(10, 30, 50, 0.75)', // Azul marino oscuro semitransparente
-    borderRadius: 16,
+  headerIcon: {
+    width: 64,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  statsSection: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF', // Cambiar a blanco para mejor contraste sobre la imagen
+    marginBottom: 16,
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', // Más transparente
+    padding: 16,
+    marginHorizontal: 4,
+    borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: 'rgba(100, 181, 246, 0.7)', // Borde izquierdo azul claro
+    backdropFilter: 'blur(10px)', // Para web
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: '#64748B',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
-        shadowRadius: 4,
+        shadowRadius: 8,
       },
       android: {
         elevation: 4,
       },
+      web: {
+        boxShadow: '0 2px 8px rgba(100, 116, 139, 0.2)',
+        backdropFilter: 'blur(10px)',
+      },
     }),
   },
-  card: {
-    padding: 20,
-    alignItems: 'center',
+  statHeader: {
     flexDirection: 'row',
-  },
-  iconWrapper: {
-    width: 42,
-    height: 42,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginRight: 16,
+    marginBottom: 8,
   },
-  cardTitle: {
-    fontSize: 16,
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748B',
     fontWeight: '500',
-    color: '#FFFFFF', // Texto blanco para contraste con el fondo oscuro
-    letterSpacing: 0.2,
+  },
+  actionsSection: {
+    paddingHorizontal: 20,
+    paddingTop: 32,
+  },
+  actionsGrid: {
+    gap: 16,
+  },
+  actionCardWrapper: {
+    marginBottom: 8,
+  },
+  infoSection: {
+    paddingHorizontal: 20,
+    paddingTop: 32,
+  },
+  infoCard: {
+    backgroundColor: 'rgba(235, 248, 255, 0.95)', // Más transparente
+    padding: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(191, 219, 254, 0.8)',
+    backdropFilter: 'blur(10px)', // Para web
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+      },
+    }),
+  },
+  infoContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E40AF',
+    marginBottom: 4,
+  },
+  infoDescription: {
+    fontSize: 14,
+    color: '#3730A3',
+    lineHeight: 20,
   },
 });
+
+export default HomeScreen;

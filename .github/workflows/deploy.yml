@@ -1,0 +1,57 @@
+name: Deploy OTA Update to Production
+
+on:
+  push:
+    branches: [main] # Se activa en cada push a la rama main
+  workflow_dispatch: # Permite ejecución manual
+
+jobs:
+  publish-ota:
+    name: Publish EAS Update (OTA)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x' # O la versión de Node que uses
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup Expo and EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }} # Token de acceso de Expo
+
+      - name: Publish update to production channel
+        # El comando 'eas update' publica los cambios de JS/assets.
+        # '--auto' selecciona la rama actual y el perfil de build correspondiente.
+        # Para la rama 'main', usualmente se mapea al canal 'production' (definido en eas.json).
+        run: npx eas update --auto --message "Automated OTA update from main branch"
+        env:
+          APP_ENV: production # Esto puede ser usado por app.config.js si lo tienes
+
+      # Opcional: Notificar a tu backend sobre la nueva versión OTA
+      - name: Notify backend about new OTA version
+        if: success() && secrets.UPDATE_NOTIFICATION_URL && secrets.UPDATE_API_TOKEN
+        run: |
+          APP_VERSION=$(jq -r '.expo.version' app.json)
+          RUNTIME_VERSION=$(jq -r '.expo.runtimeVersion' app.json)
+          PROJECT_ID=$(jq -r '.expo.extra.eas.projectId' app.json)
+
+          curl -X POST ${{ secrets.UPDATE_NOTIFICATION_URL }} \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.UPDATE_API_TOKEN }}" \
+          -d '{
+            "version": "'"$APP_VERSION"'",
+            "runtimeVersion": "'"$RUNTIME_VERSION"'",
+            "releaseDate": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
+            "channel": "production",
+            "notes": "Automated OTA update from main branch. Project ID: '"$PROJECT_ID"'",
+            "updateType": "OTA"
+          }'

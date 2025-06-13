@@ -9,6 +9,7 @@ import {
   TouchableOpacity, // Importar TouchableOpacity
   ActivityIndicator, // Importar ActivityIndicator
   RefreshControl, // Importar RefreshControl
+  Platform, // Add Platform API
 } from 'react-native';
 import {
   getQueuedPesajes,
@@ -56,7 +57,7 @@ export default function SyncScreen() {
       }
     } catch (error) {
       console.error('Error al cargar datos en SyncScreen:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos necesarios.');
+      showAlert('Error', 'No se pudieron cargar los datos necesarios.');
     } finally {
       if (showLoader) setIsLoading(false);
     }
@@ -78,12 +79,12 @@ export default function SyncScreen() {
 
   const syncAll = async () => {
     if (!usuario || !usuario.token) {
-      Alert.alert('Error', 'Usuario no autenticado o token no disponible');
+      showAlert('Error', 'Usuario no autenticado o token no disponible');
       return;
     }
 
     if (pendingPesajes.length === 0) {
-      Alert.alert('Información', 'No hay pesajes pendientes para sincronizar.');
+      showAlert('Información', 'No hay pesajes pendientes para sincronizar.');
       return;
     }
     setIsSyncing(true);
@@ -132,7 +133,7 @@ export default function SyncScreen() {
 
           // Mostrar mensaje de éxito
           if (successCount === pendingPesajes.length) {
-            Alert.alert(
+            showAlert(
               'Sincronización completa',
               `Se han sincronizado ${successCount} pesajes.`
             );
@@ -141,27 +142,27 @@ export default function SyncScreen() {
               navigation.navigate('Home');
             }
           } else {
-            Alert.alert(
+            showAlert(
               'Sincronización parcial',
               `Se sincronizaron ${successCount} de ${pendingPesajes.length} pesajes.`
             );
           }
         } catch (error) {
           console.error('Error al eliminar pesajes sincronizados:', error);
-          Alert.alert(
+          showAlert(
             'Error',
             'Los pesajes se sincronizaron pero hubo un problema al actualizar la cola local.'
           );
         }
       } else {
-        Alert.alert(
+        showAlert(
           'Sincronización fallida',
           'No se pudo sincronizar ningún pesaje. Intente nuevamente.'
         );
       }
     } catch (error) {
       console.error('Error durante la sincronización:', error);
-      Alert.alert(
+      showAlert(
         'Error de sincronización',
         'Ocurrió un error al sincronizar los pesajes.'
       );
@@ -172,7 +173,7 @@ export default function SyncScreen() {
 
   const handleSyncSinglePesaje = async (pesaje: PesajeData, index: number) => {
     if (!usuario || !usuario.token) {
-      Alert.alert('Error', 'Usuario no autenticado o token no disponible');
+      showAlert('Error', 'Usuario no autenticado o token no disponible');
       return;
     }
 
@@ -195,17 +196,17 @@ export default function SyncScreen() {
         const updatedPesajes = await getQueuedPesajes();
         setPendingPesajes(updatedPesajes);
 
-        Alert.alert('Éxito', 'El pesaje ha sido sincronizado correctamente');
+        showAlert('Éxito', 'El pesaje ha sido sincronizado correctamente');
       } else {
         console.log(`Falló la sincronización del pesaje #${index}`);
-        Alert.alert(
+        showAlert(
           'Error',
           'No se pudo sincronizar el pesaje. Intente nuevamente.'
         );
       }
     } catch (error) {
       console.error(`Error al sincronizar pesaje #${index}:`, error);
-      Alert.alert('Error', 'Ocurrió un error al sincronizar el pesaje');
+      showAlert('Error', 'Ocurrió un error al sincronizar el pesaje');
     } finally {
       // Quitar este índice de la lista de índices en sincronización
       setSyncingIndices((prev) => prev.filter((i) => i !== index));
@@ -213,34 +214,25 @@ export default function SyncScreen() {
   };
 
   const handleDeleteSinglePesaje = async (index: number) => {
-    Alert.alert(
+    showConfirmAlert(
       'Confirmar eliminación',
       '¿Está seguro que desea eliminar este pesaje de la cola de sincronización?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Eliminar el pesaje de la cola por su índice
-              await removePesajesByIndices([index]);
+      () => {}, // No action on cancel
+      async () => {
+        try {
+          // Eliminar el pesaje de la cola por su índice
+          await removePesajesByIndices([index]);
 
-              // Recargar la lista de pesajes pendientes
-              const updatedPesajes = await getQueuedPesajes();
-              setPendingPesajes(updatedPesajes);
+          // Recargar la lista de pesajes pendientes
+          const updatedPesajes = await getQueuedPesajes();
+          setPendingPesajes(updatedPesajes);
 
-              Alert.alert('Éxito', 'El pesaje ha sido eliminado de la cola');
-            } catch (error) {
-              console.error(`Error al eliminar pesaje #${index}:`, error);
-              Alert.alert('Error', 'No se pudo eliminar el pesaje');
-            }
-          },
-        },
-      ]
+          showAlert('Éxito', 'El pesaje ha sido eliminado de la cola');
+        } catch (error) {
+          console.error(`Error al eliminar pesaje #${index}:`, error);
+          showAlert('Error', 'No se pudo eliminar el pesaje');
+        }
+      }
     );
   };
 
@@ -424,6 +416,49 @@ export default function SyncScreen() {
     </ScrollView>
   );
 }
+
+// Cross-platform alert function
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    // For web, use browser's alert
+    window.alert(`${title}: ${message}`);
+  } else {
+    // For mobile platforms, use React Native's Alert
+    Alert.alert(title, message);
+  }
+};
+
+// Cross-platform confirmation alert function
+const showConfirmAlert = (
+  title: string,
+  message: string,
+  onCancel: () => void,
+  onConfirm: () => void
+) => {
+  if (Platform.OS === 'web') {
+    // For web, use browser's confirm
+    const result = window.confirm(`${title}: ${message}`);
+    if (result) {
+      onConfirm();
+    } else {
+      onCancel();
+    }
+  } else {
+    // For mobile platforms, use React Native's Alert with buttons
+    Alert.alert(title, message, [
+      {
+        text: 'Cancelar',
+        style: 'cancel',
+        onPress: onCancel,
+      },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: onConfirm,
+      },
+    ]);
+  }
+};
 
 const styles = StyleSheet.create({
   container: {

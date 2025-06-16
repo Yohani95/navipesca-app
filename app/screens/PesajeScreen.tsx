@@ -152,38 +152,61 @@ export default function PesajeScreen() {
     }
 
     // Preguntar si quiere guardar como borrador antes de salir
-    Alert.alert(
-      'Salir del pesaje',
-      '¿Deseas guardar este pesaje como borrador antes de salir?',
-      [
-        {
-          text: 'Descartar',
-          style: 'destructive',
-          onPress: () => {
-            // Asegurar que se resetea correctamente el formulario
-            if (pesajeFormRef.current?.resetForm) {
-              pesajeFormRef.current.resetForm();
-            }
-            navigation.navigate('PesajesEnCurso');
+    // Diferenciamos entre web y móvil
+    if (Platform.OS === 'web') {
+      const shouldSave = window.confirm(
+        '¿Deseas guardar este pesaje como borrador antes de salir?'
+      );
+      if (shouldSave) {
+        handleSaveDraft().then(() => {
+          // Asegurar que se resetea correctamente el formulario después de guardar
+          if (pesajeFormRef.current?.resetForm) {
+            pesajeFormRef.current.resetForm();
+          }
+          navigation.navigate('PesajesEnCurso');
+        });
+      } else {
+        // Si eligió no guardar
+        if (pesajeFormRef.current?.resetForm) {
+          pesajeFormRef.current.resetForm();
+        }
+        navigation.navigate('PesajesEnCurso');
+      }
+    } else {
+      // Versión para móvil: usar Alert
+      Alert.alert(
+        'Salir del pesaje',
+        '¿Deseas guardar este pesaje como borrador antes de salir?',
+        [
+          {
+            text: 'Descartar',
+            style: 'destructive',
+            onPress: () => {
+              // Asegurar que se resetea correctamente el formulario
+              if (pesajeFormRef.current?.resetForm) {
+                pesajeFormRef.current.resetForm();
+              }
+              navigation.navigate('PesajesEnCurso');
+            },
           },
-        },
-        {
-          text: 'Guardar borrador',
-          onPress: async () => {
-            await handleSaveDraft();
-            // Asegurar que se resetea correctamente el formulario después de guardar
-            if (pesajeFormRef.current?.resetForm) {
-              pesajeFormRef.current.resetForm();
-            }
-            navigation.navigate('PesajesEnCurso');
+          {
+            text: 'Guardar borrador',
+            onPress: async () => {
+              await handleSaveDraft();
+              // Asegurar que se resetea correctamente el formulario después de guardar
+              if (pesajeFormRef.current?.resetForm) {
+                pesajeFormRef.current.resetForm();
+              }
+              navigation.navigate('PesajesEnCurso');
+            },
           },
-        },
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-      ]
-    );
+          {
+            text: 'Cancelar',
+            style: 'cancel',
+          },
+        ]
+      );
+    }
     return true; // Previene el comportamiento predeterminado
   };
 
@@ -206,22 +229,39 @@ export default function PesajeScreen() {
         (!currentValues.bins || currentValues.bins.length === 0)
       ) {
         setIsSaving(false);
-        Alert.alert(
-          'Advertencia',
-          'No hay suficientes datos para guardar un borrador.'
-        );
+        if (Platform.OS === 'web') {
+          // Usar confirm en vez de Alert para web
+          window.alert('No hay suficientes datos para guardar un borrador.');
+        } else {
+          Alert.alert(
+            'Advertencia',
+            'No hay suficientes datos para guardar un borrador.'
+          );
+        }
         return;
       }
 
       // Guardar usando nuestra función helper
       const savedDraft = await savePesajeDraft(currentValues);
 
-      Alert.alert('Guardado', 'El pesaje ha sido guardado como borrador', [
-        { text: 'OK', onPress: () => navigation.navigate('PesajesEnCurso') },
-      ]);
+      // Mensaje de confirmación diferente para web
+      if (Platform.OS === 'web') {
+        // Mostrar confirmación en web
+        window.alert('El pesaje ha sido guardado como borrador');
+        navigation.navigate('PesajesEnCurso');
+      } else {
+        // Mostrar Alert en móvil
+        Alert.alert('Guardado', 'El pesaje ha sido guardado como borrador', [
+          { text: 'OK', onPress: () => navigation.navigate('PesajesEnCurso') },
+        ]);
+      }
     } catch (error) {
       console.error('Error al guardar borrador:', error);
-      Alert.alert('Error', 'No se pudo guardar el borrador del pesaje');
+      if (Platform.OS === 'web') {
+        window.alert('No se pudo guardar el borrador del pesaje');
+      } else {
+        Alert.alert('Error', 'No se pudo guardar el borrador del pesaje');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -532,6 +572,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#005A9C',
     minWidth: 200,
+    // Agregar estilos específicos para web
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'background-color 0.2s',
+      ':hover': {
+        backgroundColor: '#F5F9FF',
+      },
+    }),
   },
   buttonIcon: {
     marginRight: 8,

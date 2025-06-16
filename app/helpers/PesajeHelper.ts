@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { generatePesajeId, generateBinId } from '../utils/generateId';
 
 // Clave para almacenar los borradores de pesajes
@@ -36,10 +36,18 @@ export async function savePesajeDraft(pesaje: any): Promise<any> {
     if (existingDraftIndex !== -1 && embarcacionId) {
       // Actualizar el pesaje existente en lugar de crear uno nuevo
       const existingDraft = drafts[existingDraftIndex];
-      Alert.alert(
-        'Pesaje existente',
-        `Ya existe un pesaje en curso para esta embarcación. Se actualizará el existente.`
-      );
+
+      // Usar alerta adecuada según plataforma
+      if (Platform.OS === 'web') {
+        window.alert(
+          'Ya existe un pesaje en curso para esta embarcación. Se actualizará el existente.'
+        );
+      } else {
+        Alert.alert(
+          'Pesaje existente',
+          `Ya existe un pesaje en curso para esta embarcación. Se actualizará el existente.`
+        );
+      }
 
       // Actualizar el pesaje existente
       drafts[existingDraftIndex] = {
@@ -83,7 +91,12 @@ export async function savePesajeDraft(pesaje: any): Promise<any> {
     return pesajeDraft;
   } catch (error) {
     console.error('Error al guardar borrador:', error);
-    Alert.alert('Error', 'No se pudo guardar el borrador del pesaje');
+    // Usar alerta adecuada según plataforma
+    if (Platform.OS === 'web') {
+      window.alert('No se pudo guardar el borrador del pesaje');
+    } else {
+      Alert.alert('Error', 'No se pudo guardar el borrador del pesaje');
+    }
     throw error;
   }
 }

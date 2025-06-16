@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,149 @@ import {
   Platform,
   StatusBar,
   ImageBackground,
+  TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import ActionCard from '../components/ActionCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import useNetworkStatus from '../hooks/useNetworkStatus';
+import { useFocusEffect } from '@react-navigation/native';
+import { getDraftPesajes } from '../helpers/PesajeHelper';
+import { getSyncStatus } from '../storage/OfflineQueue';
+import { PesajeService } from '../services/PesajeService';
 
 const HomeScreen = ({ navigation }: any) => {
   const { usuario } = useAuth();
-  const isConnected = useNetworkStatus(); // Simulación de conexión a internet
+  const isConnected = useNetworkStatus();
+  const [stats, setStats] = useState({
+    pesajesHoy: 0,
+    totalKg: 0,
+    pendientes: 0,
+    borradores: 0,
+    completos: 0,
+    incompletos: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  // Detectar si estamos en web
+  const isWeb = Platform.OS === 'web';
+  const windowWidth = Dimensions.get('window').width;
+
+  // Cargar estadísticas reales cuando la pantalla gana foco
+  useFocusEffect(
+    React.useCallback(() => {
+      loadStats();
+    }, [])
+  );
+
+  const loadStats = async () => {
+    setLoading(true);
+    try {
+      // Obtener borradores
+      const drafts = await getDraftPesajes();
+      const completos = drafts.filter((d) => {
+        const hasBinsWithWeight = d.bins?.some((bin) => bin.completo);
+        return (
+          hasBinsWithWeight && d.tipoPez && d.embarcacionId && d.precioUnitario
+        );
+      }).length;
+      const incompletos = drafts.length - completos;
+
+      // Obtener pesajes pendientes de sincronización
+      const syncStatus = await getSyncStatus();
+
+      // Intentar cargar pesajes de hoy desde el servidor (si hay conexión)
+      let pesajesHoy = 0;
+      let totalKg = 0;
+
+      if (isConnected) {
+        try {
+          const pesajes = await PesajeService.getPesajes();
+          // Filtrar los pesajes de hoy
+          const hoy = new Date();
+          const pesajesDeHoy = pesajes.filter((p: any) => {
+            const fechaPesaje = new Date(p.fecha);
+            return (
+              fechaPesaje.setHours(0, 0, 0, 0) === hoy.setHours(0, 0, 0, 0)
+            );
+          });
+
+          pesajesHoy = pesajesDeHoy.length;
+          totalKg = pesajesDeHoy.reduce(
+            (sum: number, p: any) => sum + (p.totalKilos || 0),
+            0
+          );
+        } catch (error) {
+          console.log('Error al cargar pesajes del servidor:', error);
+        }
+      }
+
+      setStats({
+        pesajesHoy,
+        totalKg,
+        pendientes: syncStatus.pendingCount || 0,
+        borradores: drafts.length,
+        completos,
+        incompletos,
+      });
+    } catch (error) {
+      console.error('Error al cargar estadísticas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Configurar tarjetas de estadísticas con datos reales
+  const statsCards = [
+    {
+      label: 'Pesajes Hoy',
+      value: loading ? '...' : `${stats.pesajesHoy}`,
+      icon: 'chart-line',
+      color: '#3498DB',
+      onPress: () => navigation.navigate('HistorialPesajes'),
+    },
+    {
+      label: 'Kg Registrados',
+      value: loading ? '...' : `${stats.totalKg.toLocaleString('es-CL')}`,
+      icon: 'weight-kilogram',
+      color: '#2ECC71',
+      onPress: () => navigation.navigate('HistorialPesajes'),
+    },
+    {
+      label: 'Pendientes',
+      value: loading ? '...' : `${stats.pendientes}`,
+      icon: 'clock-outline',
+      color: '#E74C3C',
+      onPress: () => navigation.navigate('Sync'),
+    },
+  ];
+
+  // Nuevas tarjetas para mostrar los borradores
+  const draftCards = [
+    {
+      label: 'Borradores',
+      value: loading ? '...' : `${stats.borradores}`,
+      icon: 'file-document-outline',
+      color: '#9B59B6',
+      onPress: () => navigation.navigate('PesajesEnCurso'),
+    },
+    {
+      label: 'Completos',
+      value: loading ? '...' : `${stats.completos}`,
+      icon: 'check-circle-outline',
+      color: '#27AE60',
+      onPress: () => navigation.navigate('PesajesEnCurso'),
+    },
+    {
+      label: 'Incompletos',
+      value: loading ? '...' : `${stats.incompletos}`,
+      icon: 'alert-circle-outline',
+      color: '#F39C12',
+      onPress: () => navigation.navigate('PesajesEnCurso'),
+    },
+  ];
+
   const navigationActions = [
     {
       title: 'Pesajes',
@@ -38,25 +172,9 @@ const HomeScreen = ({ navigation }: any) => {
     },
   ];
 
-  const statsCards = [
-    { label: 'Pesajes Hoy', value: '12', icon: 'chart-line', color: '#3498DB' },
-    {
-      label: 'Total KG',
-      value: '150.000',
-      icon: 'weight-kilogram',
-      color: '#2ECC71',
-    },
-    {
-      label: 'Pendientes',
-      value: '3',
-      icon: 'clock-outline',
-      color: '#E74C3C',
-    },
-  ];
-
   return (
     <ImageBackground
-      source={require('../../assets/fondo-azul.png')} // Ajusta la ruta según tu imagen
+      source={require('../../assets/fondo-azul.png')}
       style={styles.backgroundImage}
       resizeMode="cover"
     >
@@ -64,71 +182,129 @@ const HomeScreen = ({ navigation }: any) => {
         <SafeAreaView style={styles.container}>
           <StatusBar barStyle="light-content" backgroundColor="#1A237E" />
 
-          {/* Header con gradiente */}
-          {/* <View style={styles.header}>
-            <View style={styles.headerContent}>
-              <View style={styles.welcomeSection}>
-                <Text style={styles.welcomeText}>¡Bienvenido!</Text>
-                <Text style={styles.userName}>
-                  {usuario?.nombre || 'Usuario'}
-                </Text>
-                <View style={styles.roleContainer}>
-                  <Icon name="account-circle" size={16} color="#E3F2FD" />
-                  <Text style={styles.roleText}>Trabajador de Pesca</Text>
-                </View>
-              </View>
-              <View style={styles.headerIcon}>
-                <Icon name="waves" size={40} color="#E3F2FD" />
-              </View>
-            </View>
-          </View> */}
-
           <ScrollView
             style={styles.content}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              isWeb && styles.webScrollContent,
+            ]}
           >
-            {/* Cards de estadísticas */}
-            <View style={styles.statsSection}>
+            {isWeb && (
+              <View style={styles.webHeader}>
+                <Text style={styles.webHeaderTitle}>
+                  Panel de Control NaviPesca
+                </Text>
+                <Text style={styles.webHeaderSubtitle}>
+                  Bienvenido, {usuario?.nombre || 'Usuario'}
+                </Text>
+              </View>
+            )}
+
+            {/* Sección de estadísticas principales */}
+            <View
+              style={[styles.statsSection, isWeb && styles.webStatsSection]}
+            >
               <Text style={styles.sectionTitle}>Resumen de Hoy</Text>
-              <View style={styles.statsGrid}>
+              <View style={[styles.statsGrid, isWeb && styles.webStatsGrid]}>
                 {statsCards.map((stat, index) => (
-                  <View
+                  <TouchableOpacity
                     key={index}
-                    style={[
-                      styles.statCard,
-                      {
-                        borderLeftColor: stat.color,
-                        padding: 10,
-                        marginHorizontal: 2,
-                      },
-                    ]}
+                    style={[styles.statCard, isWeb && styles.webStatCard]}
+                    onPress={stat.onPress}
+                    activeOpacity={0.7}
                   >
-                    <View style={styles.statHeader}>
-                      <Icon name={stat.icon} size={20} color={stat.color} />
-                      <Text style={[styles.statValue, { fontSize: 11 }]}>
-                        {stat.value}
-                      </Text>
+                    <View
+                      style={[
+                        styles.statIconContainer,
+                        { backgroundColor: `${stat.color}20` },
+                        isWeb && styles.webStatIconContainer,
+                      ]}
+                    >
+                      <Icon
+                        name={stat.icon}
+                        size={isWeb ? 32 : 24}
+                        color={stat.color}
+                      />
                     </View>
-                    <Text style={[styles.statLabel, { fontSize: 10 }]}>
+                    <Text
+                      style={[styles.statValue, isWeb && styles.webStatValue]}
+                    >
+                      {stat.value}
+                    </Text>
+                    <Text
+                      style={[styles.statLabel, isWeb && styles.webStatLabel]}
+                    >
                       {stat.label}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Nueva sección de borradores */}
+            <View
+              style={[styles.statsSection, isWeb && styles.webStatsSection]}
+            >
+              <Text style={styles.sectionTitle}>Pesajes en Curso</Text>
+              <View style={[styles.statsGrid, isWeb && styles.webStatsGrid]}>
+                {draftCards.map((card, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.statCard, isWeb && styles.webStatCard]}
+                    onPress={card.onPress}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.statIconContainer,
+                        { backgroundColor: `${card.color}20` },
+                        isWeb && styles.webStatIconContainer,
+                      ]}
+                    >
+                      <Icon
+                        name={card.icon}
+                        size={isWeb ? 32 : 24}
+                        color={card.color}
+                      />
+                    </View>
+                    <Text
+                      style={[styles.statValue, isWeb && styles.webStatValue]}
+                    >
+                      {card.value}
+                    </Text>
+                    <Text
+                      style={[styles.statLabel, isWeb && styles.webStatLabel]}
+                    >
+                      {card.label}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
               </View>
             </View>
 
             {/* Acciones principales */}
-            <View style={styles.actionsSection}>
+            <View
+              style={[styles.actionsSection, isWeb && styles.webActionsSection]}
+            >
               <Text style={styles.sectionTitle}>Acciones Principales</Text>
-              <View style={styles.actionsGrid}>
+              <View
+                style={[styles.actionsGrid, isWeb && styles.webActionsGrid]}
+              >
                 {navigationActions.map((action, index) => (
-                  <View key={action.title} style={styles.actionCardWrapper}>
+                  <View
+                    key={action.title}
+                    style={[
+                      styles.actionCardWrapper,
+                      isWeb && styles.webActionCardWrapper,
+                    ]}
+                  >
                     <ActionCard
                       title={action.title}
                       iconName={action.iconName}
                       onPress={action.onPress}
                       color={action.color}
+                      isWeb={isWeb}
                     />
                   </View>
                 ))}
@@ -137,7 +313,9 @@ const HomeScreen = ({ navigation }: any) => {
 
             {/* Información adicional */}
             {!isConnected && (
-              <View style={styles.infoSection}>
+              <View
+                style={[styles.infoSection, isWeb && styles.webInfoSection]}
+              >
                 <View style={styles.infoCard}>
                   <Icon name="information-outline" size={24} color="#64B5F6" />
                   <View style={styles.infoContent}>
@@ -170,69 +348,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    backgroundColor: 'rgba(26, 35, 126, 0.9)', // Más transparente para mostrar la imagen
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    paddingBottom: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#1A237E',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        background:
-          'linear-gradient(135deg, rgba(26, 35, 126, 0.9) 0%, rgba(57, 73, 171, 0.9) 100%)',
-        boxShadow: '0 4px 20px rgba(26, 35, 126, 0.3)',
-      },
-    }),
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  welcomeSection: {
-    flex: 1,
-  },
-  welcomeText: {
-    fontSize: 16,
-    color: '#E3F2FD',
-    marginBottom: 4,
-    fontWeight: '400',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  roleText: {
-    fontSize: 14,
-    color: '#E3F2FD',
-    marginLeft: 6,
-    fontWeight: '500',
-  },
-  headerIcon: {
-    width: 64,
-    height: 64,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
   content: {
     flex: 1,
   },
@@ -256,47 +371,46 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   statCard: {
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.95)', // Más transparente
-    padding: 16,
+    borderRadius: 16,
+    padding: 14,
     marginHorizontal: 4,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-
+    alignItems: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#64748B',
-        shadowOffset: { width: 0, height: 2 },
+        shadowColor: 'rgba(0, 0, 0, 0.3)',
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowRadius: 4,
       },
       android: {
         elevation: 4,
       },
-      web: {
-        boxShadow: '0 2px 8px rgba(100, 116, 139, 0.2)',
-        backdropFilter: 'blur(10px)',
-      },
     }),
   },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  statIconContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 25,
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 11,
     fontWeight: '800',
-    color: '#1E293B',
+    color: '#333',
+    marginVertical: 4,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 10,
     fontWeight: '500',
+    color: '#666',
+    textAlign: 'center',
   },
   actionsSection: {
     paddingHorizontal: 20,
@@ -340,6 +454,97 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#3730A3',
     lineHeight: 20,
+  },
+
+  // Nuevos estilos específicos para web
+  webScrollContent: {
+    maxWidth: 1200,
+    marginHorizontal: 'auto',
+    width: '100%',
+    paddingBottom: 60,
+  },
+  webHeader: {
+    marginTop: 20,
+    marginBottom: 10,
+    marginHorizontal: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  webHeaderTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+    marginBottom: 6,
+  },
+  webHeaderSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  webStatsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  webStatsGrid: {
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  webStatCard: {
+    flexBasis: Dimensions.get('window').width / 3 - 16,
+    flexGrow: 1,
+    flexShrink: 0,
+    marginHorizontal: 0,
+    paddingVertical: 20,
+    ...Platform.select({
+      web: {
+        transition: 'transform 0.2s, box-shadow 0.2s',
+      },
+    }),
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+  },
+  webStatIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: 12,
+  },
+  webStatValue: {
+    fontSize: 24,
+    marginVertical: 8,
+  },
+  webStatLabel: {
+    fontSize: 14,
+  },
+  webActionsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  webActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  webActionCardWrapper: {
+    width: Dimensions.get('window').width / 3 - 16,
+    marginBottom: 16,
+    minWidth: 250,
+  },
+  webInfoSection: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+    marginTop: 10,
   },
 });
 

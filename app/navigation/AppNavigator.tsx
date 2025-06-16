@@ -70,11 +70,9 @@ function CustomDrawerContent(props: any) {
               <Text style={styles.drawerHeaderText}>NaviPesca</Text>
             )}
           </View>
-          <Image
-            source={require('../../assets/balanza-negro.png')}
-            style={styles.drawerLogo}
-            resizeMode="contain"
-          />
+          <View>
+            <Icon name="ship-wheel" size={50} color="#FFFFFF" />
+          </View>
         </View>
         <DrawerItemList {...props} />
       </View>
@@ -168,7 +166,7 @@ function AppDrawerNavigator() {
                   marginRight: 15,
                 }}
               >
-                {usuario?.cliente && (
+                {/* {usuario?.cliente && (
                   <TouchableOpacity
                     onPress={() => {
                       if (!isHomeScreen) {
@@ -207,7 +205,7 @@ function AppDrawerNavigator() {
                       <Icon name="arrow-right" size={16} color="#FFFFFF" />
                     )}
                   </TouchableOpacity>
-                )}
+                )} */}
                 {!isHomeScreen && (
                   <TouchableOpacity
                     onPress={() => {
@@ -311,13 +309,13 @@ function AppDrawerNavigator() {
 export default function AppNavigator() {
   const { usuario, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Cargando...</Text>
-      </View>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+  //       <Text>Cargando...</Text>
+  //     </View>
+  //   );
+  // }
 
   return (
     <NavigationContainer>
@@ -343,6 +341,7 @@ const styles = StyleSheet.create({
     // Contenedor para el contenido principal (header, items)
     // Este View ayuda a agrupar la parte superior del drawer
   },
+
   drawerHeader: {
     paddingVertical: 15, // Ajustar padding vertical
     paddingHorizontal: 20,

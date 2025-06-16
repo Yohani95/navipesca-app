@@ -16,6 +16,9 @@ export default ({ config }) => {
 
   return {
     ...config,
+    name: 'NaviPesca',
+    slug: 'navipesca-app', // Debe coincidir con el projectId
+    icon: './assets/icon.png',
     version,
     ios: {
       ...config.ios,
@@ -23,6 +26,13 @@ export default ({ config }) => {
     },
     android: {
       ...config.android,
+      icon: './assets/icon.png',
+      name: 'NaviPesca',
+      adaptiveIcon: {
+        foregroundImage: './assets/icon.png',
+        backgroundColor: '#ffffff',
+      },
+      package: 'com.tucompania.navipesca', // Asegúrate de usar tu ID de paquete real
       versionCode: parseInt(buildNumber, 10),
     },
     extra: {

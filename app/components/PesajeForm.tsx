@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#005A9C',
+    color: '#333333', // Changed to dark gray
     marginBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
@@ -790,7 +790,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    color: '#333',
+    color: '#333333', // Changed to dark gray
     fontWeight: '500',
   },
   input: {
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 12 : 10,
     fontSize: 15,
     backgroundColor: '#F8F9FA',
-    color: '#333',
+    color: '#333333', // Changed to dark gray
     width: '100%',
   },
   pickerWrapper: {
@@ -814,11 +814,11 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: Platform.OS === 'ios' ? undefined : 55,
-    color: '#333',
+    color: '#333333', // Changed to dark gray
     width: '100%',
   },
   pickerItem: {
-    color: '#333',
+    color: '#333333', // Changed to dark gray
     fontSize: 16,
   },
   addBinForm: {
@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
   emptyBinsText: {
     marginLeft: 8,
     fontSize: 15,
-    color: '#555',
+    color: '#555555', // Changed to gray
   },
   binInfo: {
     flex: 1,
@@ -899,17 +899,17 @@ const styles = StyleSheet.create({
   },
   binText: {
     fontSize: 13,
-    color: '#555',
+    color: '#555555', // Changed to gray
   },
   binTextBold: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#333333', // Changed to dark gray
   },
   binTextNeto: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#005A9C',
+    color: '#333333', // Changed to dark gray
     marginTop: 2,
   },
   summaryRow: {
@@ -921,29 +921,29 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 15,
-    color: '#444',
+    color: '#444444', // Changed to gray
   },
   summaryValue: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#222',
+    color: '#222222', // Changed to dark gray
   },
   summaryTotalRow: {
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 2,
-    borderTopColor: '#005A9C',
+    borderTopColor: '#333333', // Changed to dark gray
     borderBottomWidth: 0,
   },
   summaryTotalLabel: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#005A9C',
+    color: '#333333', // Changed to dark gray
   },
   summaryTotalValue: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#005A9C',
+    color: '#333333', // Changed to dark gray
   },
   actionButtonsContainer: {
     marginTop: 20,
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontSize: 14,
-    color: '#2980B9',
+    color: '#555555', // Changed to gray
   },
   incompleteBin: {
     borderLeftWidth: 4,
@@ -1054,7 +1054,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#333333', // Changed to dark gray
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -1064,7 +1064,7 @@ const styles = StyleSheet.create({
   modalBinInfo: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#555',
+    color: '#555555', // Changed to gray
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -1099,11 +1099,11 @@ const styles = StyleSheet.create({
   },
   binsStatusText: {
     fontSize: 14,
-    color: '#555',
+    color: '#555555', // Changed to gray
   },
   boldText: {
     fontWeight: 'bold',
-    color: '#333',
+    color: '#333333', // Changed to dark gray
   },
 });
 

@@ -25,14 +25,18 @@ const ActionCard = ({
 }: ActionCardProps) => {
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: color }, isWeb && styles.webCard]}
+      style={[
+        styles.card,
+        { backgroundColor: isWeb ? 'transparent' : 'transparent' },
+        isWeb && styles.webCard,
+      ]}
       onPress={onPress}
       activeOpacity={0.8}
     >
       <Icon
         name={iconName}
         size={isWeb ? 40 : 32}
-        color="#FFFFFF"
+        color={color}
         style={styles.icon}
       />
       <Text style={[styles.title, isWeb && styles.webTitle]}>{title}</Text>
@@ -42,15 +46,10 @@ const ActionCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
     padding: 16,
     paddingVertical: 20,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    elevation: 0, // Quitar la elevación
   },
   icon: {
     marginBottom: 10,
@@ -64,7 +63,7 @@ const styles = StyleSheet.create({
   webCard: {
     padding: 24,
     paddingVertical: 30,
-    borderRadius: 16,
+
     ...Platform.select({
       web: {
         transition: 'transform 0.2s',

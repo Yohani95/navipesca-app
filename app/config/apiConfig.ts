@@ -27,12 +27,11 @@ const isProduction = currentEnvironment === ENV.prod;
 // URLs de API para diferentes entornos
 const API_URLS = {
   [ENV.dev]: {
-    LOCAL_IP: '192.168.1.9',
-    API_PORT: '3000',
+    LOCAL_IP: 'https://navi-pesca.vercel.app',
     API_BASE_PATH: '/api',
   },
   [ENV.test]: {
-    BASE_URL: 'https://testing.navi-pesca.vercel.app',
+    BASE_URL: 'https://navi-pesca.vercel.app',
     API_BASE_PATH: '/api',
   },
   [ENV.prod]: {
@@ -46,12 +45,8 @@ export const API_URL =
   isProduction || currentEnvironment === ENV.test
     ? `${API_URLS[currentEnvironment].BASE_URL}${API_URLS[currentEnvironment].API_BASE_PATH}`
     : Platform.OS === 'android'
-    ? `http://${API_URLS[ENV.dev].LOCAL_IP}:${API_URLS[ENV.dev].API_PORT}${
-        API_URLS[ENV.dev].API_BASE_PATH
-      }`
-    : `http://localhost:${API_URLS[ENV.dev].API_PORT}${
-        API_URLS[ENV.dev].API_BASE_PATH
-      }`;
+    ? `${API_URLS[ENV.dev].LOCAL_IP}${API_URLS[ENV.dev].API_BASE_PATH}`
+    : `${API_URLS[ENV.dev].LOCAL_IP}${API_URLS[ENV.dev].API_BASE_PATH}`;
 
 console.log(`App corriendo en modo: ${currentEnvironment.toUpperCase()}`);
 console.log(`API URL: ${API_URL}`);

@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/fondo-personas.png",
+      "image": "./assets/fondo-azul.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,15 +16,17 @@
       "supportsTablet": true
     },
     "android": {
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
+      "name": "NaviPesca",
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.navipescaapp"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "extra": {
       "environment": "development",
@@ -33,6 +35,11 @@
       "eas": {
         "projectId": "990f2969-e78b-4425-8b3c-e8f2bbc1cbd4"
       }
+    },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0
     }
   }
 }

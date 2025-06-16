@@ -12,13 +12,12 @@ import {
   Platform, // Add Platform API
 } from 'react-native';
 import {
-  getQueuedPesajes,
-  clearQueue,
-  removePesajesFromQueue,
-  removePesajesByIndices,
+  getQueuedPesajes, // Ahora esta función existe
+  clearQueue, // Ahora esta función existe
+  removePesajesByIndices, // Ahora esta función existe
+  removePesajesFromQueue, // Ahora esta función existe
 } from '../storage/OfflineQueue';
 import { PesajeService } from '../services/PesajeService';
-import { EmbarcacionService } from '../services/EmbarcacionService';
 import { useAuth } from '../context/AuthContext';
 import { PesajeData } from '../services/types';
 import { useNavigation, useFocusEffect } from '@react-navigation/native'; // Importar useFocusEffect

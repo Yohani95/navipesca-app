@@ -51,7 +51,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../../assets/fondo-app-navipesca.png')}
+        source={require('../../assets/fondo-azul.png')}
         style={styles.background}
       >
         <Text style={styles.title}>NaviPesca</Text>

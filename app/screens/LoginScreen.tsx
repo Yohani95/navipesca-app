@@ -45,7 +45,7 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={require('../../assets/fondo-app-navipesca.png')}
+      source={require('../../assets/fondo-azul.png')}
       style={styles.background}
       resizeMode="cover"
     >

@@ -7,17 +7,28 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  BackHandler,
+  ActivityIndicator,
+  Text,
+  TouchableOpacity,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {
+  useNavigation,
+  useRoute,
+  useFocusEffect,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import useNetworkStatus from '../hooks/useNetworkStatus';
 import { addPesajeToQueue } from '../storage/OfflineQueue';
 import { EmbarcacionService } from '../services/EmbarcacionService';
 import { PesajeService } from '../services/PesajeService';
-import PesajeForm, { PesajeFormRef } from '../components/PesajeForm'; // Asegúrate que la ruta es correcta
+import PesajeForm, { PesajeFormRef } from '../components/PesajeForm';
 import { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { savePesajeDraft, deleteDraftPesaje } from '../helpers/PesajeHelper';
 
 const EMBARCACIONES_CACHE_KEY = 'embarcaciones_cache';
 
@@ -26,85 +37,202 @@ type PesajeScreenNavigationProp = NativeStackNavigationProp<
   'Pesaje'
 >;
 
-// Cross-platform alert function
-const showAlert = (title: string, message: string) => {
-  if (Platform.OS === 'web') {
-    // For web, use browser's alert
-    window.alert(`${title}: ${message}`);
-  } else {
-    // For mobile platforms, use React Native's Alert
-    Alert.alert(title, message);
-  }
-};
-
 export default function PesajeScreen() {
-  const { usuario } = useAuth();
+  const route = useRoute();
   const navigation = useNavigation<PesajeScreenNavigationProp>();
+  const { usuario } = useAuth();
   const isConnected = useNetworkStatus();
   const [embarcaciones, setEmbarcaciones] = useState<
     { id: number; nombre: string }[]
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const pesajeFormRef = useRef<PesajeFormRef>(null);
   const [loadingEmbarcaciones, setLoadingEmbarcaciones] = useState(true);
+  const { draft } = (route.params as { draft: any }) || { draft: null };
 
+  // Cargar embarcaciones y configurar navegación
   useEffect(() => {
-    const gestionarEmbarcaciones = async () => {
-      setLoadingEmbarcaciones(true);
-      try {
-        // 1. Intentar cargar desde AsyncStorage
-        const cachedEmbarcaciones = await AsyncStorage.getItem(
-          EMBARCACIONES_CACHE_KEY
-        );
-        if (cachedEmbarcaciones) {
-          setEmbarcaciones(JSON.parse(cachedEmbarcaciones));
-        }
+    loadEmbarcaciones();
 
-        // 2. Si hay conexión, intentar actualizar desde el servicio
-        if (isConnected) {
-          const dataFromService = await EmbarcacionService.getEmbarcaciones();
-          setEmbarcaciones(dataFromService);
-          await AsyncStorage.setItem(
-            EMBARCACIONES_CACHE_KEY,
-            JSON.stringify(dataFromService)
-          );
-        } else if (!cachedEmbarcaciones) {
-          // No hay conexión y no hay datos locales
-          showAlert(
-            'Modo sin conexión',
-            'No hay datos de embarcaciones guardados localmente y no se pueden cargar en este momento. No podrá registrar pesajes hasta tener conexión para obtener la lista de embarcaciones.'
-          );
-        }
-      } catch (error) {
-        console.error('Error al gestionar embarcaciones:', error);
-        if (!isConnected && embarcaciones.length === 0) {
-          showAlert(
-            'Error de Carga',
-            'No se pudieron cargar las embarcaciones y no hay datos locales. Verifique su conexión o intente más tarde.'
-          );
-        } else if (isConnected) {
-          showAlert(
-            'Error de Red',
-            'No se pudieron obtener las embarcaciones del servidor.'
-          );
-        }
-        // Si hay error pero teníamos datos cacheados, se siguen usando esos.
-      } finally {
-        setLoadingEmbarcaciones(false);
+    // Cuando se carga un nuevo draft (o se inicia uno nuevo), resetear el formulario
+    if (pesajeFormRef.current) {
+      // Si no hay draft, resetear el formulario
+      if (!draft && pesajeFormRef.current.resetForm) {
+        pesajeFormRef.current.resetForm();
       }
-    };
+    }
 
-    gestionarEmbarcaciones();
-  }, [isConnected]);
-  const handleSubmit = async (formDataFromForm: any) => {
+    // Configurar navegación cuando se presiona el botón atrás
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity onPress={handleBackPress} style={{ marginLeft: 15 }}>
+          <Icon name="arrow-left" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, draft]); // Añadir draft como dependencia
+
+  // Movemos la lógica del BackHandler a useFocusEffect para que solo se active cuando la pantalla tiene el foco
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('useFocusEffect called');
+      // Configurar manejo del botón de retroceso en Android SOLO cuando la pantalla está enfocada
+      const backHandler = BackHandler.addEventListener(
+        'hardwareBackPress',
+        handleBackPress
+      );
+
+      // Limpieza: remover el listener cuando la pantalla pierde el foco
+      return () => {
+        backHandler.remove();
+      };
+    }, [])
+  );
+
+  const loadEmbarcaciones = async () => {
+    setLoadingEmbarcaciones(true);
+    try {
+      // Cargar desde caché primero
+      const cachedData = await AsyncStorage.getItem(EMBARCACIONES_CACHE_KEY);
+
+      if (cachedData) {
+        setEmbarcaciones(JSON.parse(cachedData));
+      }
+
+      // Si hay conexión, intentar actualizar
+      if (isConnected) {
+        const freshData = await EmbarcacionService.getEmbarcaciones();
+        setEmbarcaciones(freshData);
+        await AsyncStorage.setItem(
+          EMBARCACIONES_CACHE_KEY,
+          JSON.stringify(freshData)
+        );
+      } else if (!cachedData) {
+        // Sin conexión y sin datos en caché, usar datos mock
+        const mockEmbarcaciones = [
+          { id: 1, nombre: 'Nautilus I' },
+          { id: 2, nombre: 'Pescadora del Sur' },
+          { id: 3, nombre: 'Oceánica' },
+          { id: 4, nombre: 'Mar Azul' },
+        ];
+        setEmbarcaciones(mockEmbarcaciones);
+        await AsyncStorage.setItem(
+          EMBARCACIONES_CACHE_KEY,
+          JSON.stringify(mockEmbarcaciones)
+        );
+      }
+    } catch (error) {
+      console.error('Error al cargar embarcaciones:', error);
+      // Usar datos mock en caso de error
+      const mockEmbarcaciones = [
+        { id: 1, nombre: 'Nautilus I' },
+        { id: 2, nombre: 'Pescadora del Sur' },
+        { id: 3, nombre: 'Oceánica' },
+        { id: 4, nombre: 'Mar Azul' },
+      ];
+      setEmbarcaciones(mockEmbarcaciones);
+    } finally {
+      setLoadingEmbarcaciones(false);
+    }
+  };
+
+  // Manejador del botón atrás
+  const handleBackPress = () => {
+    // Solo mostrar diálogo si hay datos en el formulario
+    const currentValues = pesajeFormRef.current?.getCurrentValues?.();
+    const hasBins = currentValues?.bins?.length > 0;
+    const hasTipoPez = currentValues?.tipoPez;
+    const hasEmbarcacion = currentValues?.embarcacionId;
+
+    // Si el formulario está vacío o no hay cambios, volver directamente
+    if (!hasBins && !hasTipoPez && !hasEmbarcacion) {
+      navigation.navigate('PesajesEnCurso');
+      return true;
+    }
+
+    // Preguntar si quiere guardar como borrador antes de salir
+    Alert.alert(
+      'Salir del pesaje',
+      '¿Deseas guardar este pesaje como borrador antes de salir?',
+      [
+        {
+          text: 'Descartar',
+          style: 'destructive',
+          onPress: () => {
+            // Asegurar que se resetea correctamente el formulario
+            if (pesajeFormRef.current?.resetForm) {
+              pesajeFormRef.current.resetForm();
+            }
+            navigation.navigate('PesajesEnCurso');
+          },
+        },
+        {
+          text: 'Guardar borrador',
+          onPress: async () => {
+            await handleSaveDraft();
+            // Asegurar que se resetea correctamente el formulario después de guardar
+            if (pesajeFormRef.current?.resetForm) {
+              pesajeFormRef.current.resetForm();
+            }
+            navigation.navigate('PesajesEnCurso');
+          },
+        },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+      ]
+    );
+    return true; // Previene el comportamiento predeterminado
+  };
+
+  const handleSaveDraft = async () => {
+    if (!pesajeFormRef.current) return;
+
+    setIsSaving(true);
+    try {
+      // Obtener valores actuales del formulario
+      const currentValues = pesajeFormRef.current.getCurrentValues?.();
+
+      if (!currentValues) {
+        throw new Error('No se pudieron obtener los valores del formulario');
+      }
+
+      // Si no tiene datos suficientes, no guardar
+      if (
+        !currentValues.tipoPez &&
+        !currentValues.embarcacionId &&
+        (!currentValues.bins || currentValues.bins.length === 0)
+      ) {
+        setIsSaving(false);
+        Alert.alert(
+          'Advertencia',
+          'No hay suficientes datos para guardar un borrador.'
+        );
+        return;
+      }
+
+      // Guardar usando nuestra función helper
+      const savedDraft = await savePesajeDraft(currentValues);
+
+      Alert.alert('Guardado', 'El pesaje ha sido guardado como borrador', [
+        { text: 'OK', onPress: () => navigation.navigate('PesajesEnCurso') },
+      ]);
+    } catch (error) {
+      console.error('Error al guardar borrador:', error);
+      Alert.alert('Error', 'No se pudo guardar el borrador del pesaje');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSubmit = async (formValues: any) => {
     setIsSubmitting(true);
 
-    if (
-      !usuario ||
-      typeof usuario.personaId === 'undefined' ||
-      usuario.token === null
-    ) {
-      showAlert(
+    // Validar que el usuario esté autenticado
+    if (!usuario?.personaId || !usuario?.token) {
+      Alert.alert(
         'Error de autenticación',
         'No se pudo obtener la información del usuario. Por favor, inicie sesión nuevamente.'
       );
@@ -112,107 +240,211 @@ export default function PesajeScreen() {
       return;
     }
 
-    // Process formDataFromForm to ensure all fields have the correct type
-    const processedFormData = {
-      ...formDataFromForm,
-      precioUnitario: Number(formDataFromForm.precioUnitario),
-      embarcacionId: Number(formDataFromForm.embarcacionId),
-      totalKilos: Number(formDataFromForm.totalKilos),
-      totalSinIVA: Number(formDataFromForm.totalSinIVA),
-      iva: Number(formDataFromForm.iva),
-      totalConIVA: Number(formDataFromForm.totalConIVA),
-    };
+    // Guardar el ID del borrador si existe, para eliminarlo después
+    const draftId = formValues.id;
+    const isDraft = !!draftId;
 
+    // console.log(
+    //   `Es un borrador: ${isDraft ? 'Sí' : 'No'}, ID: ${draftId || 'N/A'}`
+    // );
+    // console.log(
+    //   'Valores originales del formulario:',
+    //   JSON.stringify(formValues, null, 2)
+    // );
+
+    // IMPORTANTE: Crear una copia limpia del objeto sin propiedades problemáticas
+    // que podrían causar error 500 en el servidor
+    const cleanValues = { ...formValues };
+
+    // Eliminar propiedades que podrían causar problemas en el servidor
+    delete cleanValues.id; // Eliminar ID local
+    delete cleanValues.createdAt; // Eliminar fechas locales
+    delete cleanValues.updatedAt;
+
+    // Si hay otras propiedades problemáticas, eliminarlas también
+    delete cleanValues.syncStatus;
+    delete cleanValues.createdOffline;
+
+    // Crear una copia limpia del pesaje para enviar al servidor
     const pesajePayload = {
-      ...processedFormData,
+      ...cleanValues,
+      // Asegurar que todos los campos numéricos sean realmente números
+      precioUnitario: Number(cleanValues.precioUnitario),
+      embarcacionId: Number(cleanValues.embarcacionId),
+      totalKilos: Number(cleanValues.totalKilos || 0),
+      totalSinIVA: Number(cleanValues.totalSinIVA || 0),
+      iva: Number(cleanValues.iva || 0),
+      totalConIVA: Number(cleanValues.totalConIVA || 0),
       trabajadorId: usuario.nombre,
       compradorId: usuario.nombre,
       pagado: false,
       metodoPago: null,
+      // Asegurar que la fecha esté en formato ISO
+      fecha: new Date().toISOString(),
     };
 
-    // Eliminar el ID temporal de los bins si existe
+    // Eliminar IDs temporales de los bins y asegurar que los datos son números
     if (pesajePayload.bins) {
-      pesajePayload.bins = pesajePayload.bins.map(
-        (bin: { id?: string; [key: string]: any }) => {
-          const { id, ...restOfBin } = bin;
-          // Ensure all bin numeric fields are numbers
-          return {
-            ...restOfBin,
-            pesoBruto: Number(restOfBin.pesoBruto),
-            pesoTara: Number(restOfBin.pesoTara),
-            pesoNeto: Number(restOfBin.pesoNeto),
-          };
-        }
-      );
+      pesajePayload.bins = pesajePayload.bins.map((bin: any) => {
+        // Crear un objeto nuevo sin ID para cada bin
+        const { id, ...binData } = bin;
+        return {
+          ...binData,
+          pesoBruto: Number(binData.pesoBruto),
+          pesoTara: Number(binData.pesoTara),
+          pesoNeto: Number(binData.pesoNeto),
+        };
+      });
     }
 
-    console.log(
-      'Enviando pesajePayload:',
-      JSON.stringify(pesajePayload, null, 2)
-    ); // DEBUGGING: Uncomment to see the exact payload
-
-    if (!isConnected) {
-      try {
-        await addPesajeToQueue(pesajePayload);
-        console.log('Pesaje guardado localmente:', pesajePayload);
-        showAlert('Guardado local', 'Pesaje guardado sin conexión');
-        pesajeFormRef.current?.resetForm();
-        navigation.navigate('Home');
-      } catch (error) {
-        console.error('Error al guardar pesaje localmente:', error);
-        showAlert('Error', 'No se pudo guardar el pesaje localmente.');
-      } finally {
-        setIsSubmitting(false);
-      }
-      return;
-    }
+    // console.log(
+    //   'Payload limpio a enviar:',
+    //   JSON.stringify(pesajePayload, null, 2)
+    // );
 
     try {
-      await PesajeService.createPesaje(pesajePayload);
-      showAlert('Éxito', 'Pesaje enviado correctamente');
-      pesajeFormRef.current?.resetForm();
-      navigation.navigate('Home');
-    } catch (error: any) {
-      // Tipar error como any para acceder a sus propiedades
-      console.error('Error al enviar pesaje:', error);
-      // Loguear más detalles del error si es un error de Axios
-      if (error.isAxiosError) {
-        console.error(
-          'Axios error response:',
-          JSON.stringify(error.response?.data, null, 2)
-        );
-        console.error('Axios error status:', error.response?.status);
-        console.error(
-          'Axios error headers:',
-          JSON.stringify(error.response?.headers, null, 2)
-        );
+      // Verificar conexión a internet
+      const netInfo = await NetInfo.fetch();
+
+      if (netInfo.isConnected && netInfo.isInternetReachable) {
+        // Con conexión - enviar al servidor
+        console.log('Enviando al servidor...');
+        const response = await PesajeService.createPesaje(pesajePayload);
+        // console.log(
+        //   'Respuesta del servidor:',
+        //   JSON.stringify(response, null, 2)
+        // );
+
+        // Si el pesaje era un borrador, eliminarlo después de enviarlo exitosamente
+        if (draftId) {
+          try {
+            await deleteDraftPesaje(draftId);
+            // console.log(
+            //   `Borrador con ID ${draftId} eliminado después de enviarse correctamente`
+            // );
+          } catch (deleteError) {
+            console.error(
+              'Error al eliminar borrador después de enviar:',
+              deleteError
+            );
+            // No interrumpimos el flujo si hay error al eliminar
+          }
+        }
+
+        Alert.alert('Éxito', 'Pesaje enviado correctamente', [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Resetear formulario antes de navegar
+              if (pesajeFormRef.current?.resetForm) {
+                pesajeFormRef.current.resetForm();
+              }
+              navigation.navigate('Home');
+            },
+          },
+        ]);
       } else {
-        console.error('Error details:', JSON.stringify(error, null, 2));
+        // Sin conexión - guardar localmente para sincronizar después
+        try {
+          // Guardar en cola para sincronización posterior
+          await addPesajeToQueue(pesajePayload);
+
+          // También guardar como borrador para poder editarlo
+          await savePesajeDraft(formValues);
+
+          Alert.alert(
+            'Sin conexión',
+            'El pesaje se ha guardado localmente. Podrás sincronizarlo más tarde desde la pantalla de Sincronización.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // Resetear formulario antes de navegar
+                  if (pesajeFormRef.current?.resetForm) {
+                    pesajeFormRef.current.resetForm();
+                  }
+                  navigation.navigate('PesajesEnCurso');
+                },
+              },
+            ]
+          );
+        } catch (error) {
+          console.error('Error al guardar localmente:', error);
+          Alert.alert(
+            'Error',
+            'No se pudo guardar el pesaje en modo sin conexión'
+          );
+        }
       }
-      showAlert(
-        'Error',
-        `No se pudo enviar el pesaje. ${
-          error.response?.data?.message ||
-          'Verifique los datos e intente de nuevo.'
-        }`
-      );
+    } catch (error: any) {
+      console.error('Error al enviar pesaje:', error);
+
+      // Log detallado del error
+      if (error.response) {
+        console.error('Código de estado:', error.response.status);
+        console.error(
+          'Datos de respuesta:',
+          JSON.stringify(error.response.data, null, 2)
+        );
+        console.error(
+          'Cabeceras:',
+          JSON.stringify(error.response.headers, null, 2)
+        );
+      } else if (error.request) {
+        console.error('No se recibió respuesta del servidor:', error.request);
+      } else {
+        console.error(
+          'Error en la configuración de la solicitud:',
+          error.message
+        );
+      }
+
+      // Intentar guardar como borrador en caso de error
+      try {
+        await savePesajeDraft(formValues);
+        Alert.alert(
+          'Error al enviar',
+          'No se pudo enviar el pesaje al servidor, pero se guardó como borrador.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Resetear formulario antes de navegar
+                if (pesajeFormRef.current?.resetForm) {
+                  pesajeFormRef.current.resetForm();
+                }
+                navigation.navigate('PesajesEnCurso');
+              },
+            },
+          ]
+        );
+      } catch (draftError) {
+        Alert.alert(
+          'Error',
+          'No se pudo enviar ni guardar el pesaje. Por favor, intente nuevamente.'
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSyncPress = () => {
-    navigation.navigate('Sync');
-  };
-
   const isWeb = Platform.OS === 'web';
+
+  if (loadingEmbarcaciones) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#005A9C" />
+        <Text style={styles.loadingText}>Cargando datos...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.keyboardAvoidingContainer}
-      enabled={!isWeb} // Disable on web as it's not needed
+      enabled={!isWeb}
     >
       <ScrollView
         contentContainerStyle={[
@@ -225,9 +457,33 @@ export default function PesajeScreen() {
           ref={pesajeFormRef}
           embarcaciones={embarcaciones}
           onSubmit={handleSubmit}
-          isSubmitting={isSubmitting || loadingEmbarcaciones}
-          isWeb={isWeb} // Pass isWeb prop to PesajeForm
+          isSubmitting={isSubmitting}
+          isWeb={isWeb}
+          initialValues={draft}
+          onEmbarcacionChange={(embarcacionId) => {
+            // Aquí puedes verificar si ya existe un pesaje para esta embarcación
+            // y mostrar una alerta si es necesario, pero permitiendo continuar
+          }}
         />
+
+        {/* Botón para guardar como borrador */}
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.draftButton, isSaving && styles.buttonDisabled]}
+            onPress={handleSaveDraft}
+            disabled={isSaving}
+          >
+            <Icon
+              name="content-save-outline"
+              size={20}
+              color="#005A9C"
+              style={styles.buttonIcon}
+            />
+            <Text style={styles.draftButtonText}>
+              {isSaving ? 'Guardando...' : 'Guardar como Borrador'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -240,13 +496,53 @@ const styles = StyleSheet.create({
   },
   scrollContentContainer: {
     flexGrow: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 32,
   },
   webScrollContainer: {
-    // Add web-specific styles for better handling of the scroll container
     maxWidth: 1200,
     marginHorizontal: 'auto',
     width: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#555',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  draftButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#005A9C',
+    minWidth: 200,
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  draftButtonText: {
+    color: '#005A9C',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    backgroundColor: '#F0F0F0',
+    borderColor: '#CCCCCC',
   },
 });

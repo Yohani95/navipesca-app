@@ -1,144 +1,191 @@
 // app/storage/OfflineQueue.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { generatePesajeId } from '../utils/generateId';
 
-// Consistencia: usar una única clave para la cola de pesajes
-const KEY = 'pesajes_pendientes';
+const OFFLINE_QUEUE_KEY = 'offline_pesajes_queue';
+const SYNC_STATUS_KEY = 'sync_status';
 
-// Añadir un pesaje a la cola con un ID único
-export const addPesajeToQueue = async (pesaje: any) => {
+/**
+ * Agrega un pesaje a la cola para sincronización posterior
+ */
+export async function addPesajeToQueue(pesaje: any): Promise<void> {
   try {
-    const stored = await AsyncStorage.getItem(KEY);
-    const currentQueue = stored ? JSON.parse(stored) : [];
+    // Cargar cola existente
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    const queue = queueStr ? JSON.parse(queueStr) : [];
 
-    // Asegurarse de que el pesaje tenga un ID
+    // Generar ID local si no lo tiene
     const pesajeWithId = {
       ...pesaje,
-      id: `offline-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      id: pesaje.id || generatePesajeId(pesaje.embarcacionId),
+      createdOffline: true,
+      createdAt: new Date().toISOString(),
+      syncStatus: 'pending', // pending, syncing, success, failed
     };
 
-    console.log(`Añadiendo pesaje a la cola con ID: ${pesajeWithId.id}`);
+    // Agregar a la cola
+    queue.push(pesajeWithId);
 
-    currentQueue.push(pesajeWithId);
-    await AsyncStorage.setItem(KEY, JSON.stringify(currentQueue));
-    console.log(`Pesaje añadido a la cola con ID: ${pesajeWithId.id}`);
+    // Guardar cola actualizada
+    await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
 
-    return pesajeWithId; // Retornar el pesaje con su ID asignado
+    // Actualizar estado de sincronización
+    updateSyncStatus();
+
+    console.log('Pesaje agregado a cola offline:', pesajeWithId.id);
   } catch (error) {
-    console.error('Error al añadir pesaje a la cola:', error);
+    console.error('Error al agregar pesaje a cola offline:', error);
     throw error;
   }
-};
+}
 
-export const getQueuedPesajes = async (): Promise<any[]> => {
+/**
+ * Actualiza el estado de sincronización
+ */
+export async function updateSyncStatus(): Promise<void> {
   try {
-    const stored = await AsyncStorage.getItem(KEY);
-    const queue = stored ? JSON.parse(stored) : [];
-    console.log(`Obtenidos ${queue.length} pesajes de la cola`);
-    return queue;
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    const queue = queueStr ? JSON.parse(queueStr) : [];
+
+    const status = {
+      lastUpdated: new Date().toISOString(),
+      pendingCount: queue.length,
+      hasPending: queue.length > 0,
+    };
+
+    await AsyncStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(status));
   } catch (error) {
-    console.error('Error al obtener pesajes de la cola:', error);
+    console.error('Error al actualizar estado de sincronización:', error);
+  }
+}
+
+/**
+ * Obtiene la cola de pesajes pendientes de sincronización
+ * Alias para getQueuedPesajes (para mantener compatibilidad con SyncScreen)
+ */
+export async function getPendingPesajes(): Promise<any[]> {
+  return getQueuedPesajes();
+}
+
+/**
+ * Obtiene la cola de pesajes pendientes de sincronización
+ */
+export async function getQueuedPesajes(): Promise<any[]> {
+  try {
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    return queueStr ? JSON.parse(queueStr) : [];
+  } catch (error) {
+    console.error('Error al obtener pesajes pendientes:', error);
     return [];
   }
-};
+}
 
-// Limpiar toda la cola
-export const clearQueue = async (): Promise<void> => {
+/**
+ * Remueve un pesaje de la cola de pendientes
+ */
+export async function removePesajeFromQueue(pesajeId: string): Promise<void> {
   try {
-    await AsyncStorage.removeItem(KEY);
-    console.log('Cola de pesajes limpiada completamente');
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    if (!queueStr) return;
+
+    const queue = JSON.parse(queueStr);
+    const updatedQueue = queue.filter((p: any) => p.id !== pesajeId);
+
+    await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(updatedQueue));
+    await updateSyncStatus();
   } catch (error) {
-    console.error('Error al limpiar la cola de pesajes:', error);
-    throw error;
+    console.error('Error al remover pesaje de la cola:', error);
   }
-};
+}
 
-// Eliminar pesajes específicos por su índice en la cola
-export const removePesajesByIndices = async (
-  indicesToRemove: number[]
-): Promise<void> => {
+/**
+ * Remueve múltiples pesajes de la cola por sus IDs
+ */
+export async function removePesajesFromQueue(
+  pesajeIds: string[]
+): Promise<void> {
   try {
-    if (indicesToRemove.length === 0) {
-      console.log('No hay índices para eliminar');
-      return;
-    }
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    if (!queueStr) return;
 
-    console.log(
-      `Intentando eliminar pesajes en los índices: ${indicesToRemove.join(
-        ', '
-      )}`
-    );
+    const queue = JSON.parse(queueStr);
+    const updatedQueue = queue.filter((p: any) => !pesajeIds.includes(p.id));
 
-    // Obtener la cola actual
-    const currentQueue = await getQueuedPesajes();
-
-    if (currentQueue.length === 0) {
-      console.log('La cola está vacía');
-      return;
-    }
-
-    // Filtrar la cola para mantener solo los elementos cuyos índices NO están en indicesToRemove
-    const updatedQueue = currentQueue.filter(
-      (_, index) => !indicesToRemove.includes(index)
-    );
-
-    // Guardar la cola actualizada
-    await AsyncStorage.setItem(KEY, JSON.stringify(updatedQueue));
-    console.log(
-      `Se eliminaron ${indicesToRemove.length} pesajes. Quedan ${updatedQueue.length}`
-    );
+    await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(updatedQueue));
+    await updateSyncStatus();
   } catch (error) {
-    console.error('Error al eliminar pesajes por índice:', error);
-    throw error;
+    console.error('Error al remover pesajes de la cola:', error);
   }
-};
+}
 
-// Función para eliminar pesajes específicos de la cola por sus IDs
-export const removePesajesFromQueue = async (
-  successfulIds: string[]
-): Promise<void> => {
+/**
+ * Remueve pesajes de la cola por sus índices en el array
+ */
+export async function removePesajesByIndices(indices: number[]): Promise<void> {
   try {
-    if (successfulIds.length === 0) {
-      console.log('No hay IDs para eliminar');
-      return;
-    }
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    if (!queueStr) return;
 
-    console.log(
-      `Intentando eliminar ${successfulIds.length} pesajes: ${JSON.stringify(
-        successfulIds
-      )}`
+    const queue = JSON.parse(queueStr);
+    const updatedQueue = queue.filter(
+      (_: any, index: number) => !indices.includes(index)
     );
 
-    // Obtener la cola actual
-    const queue = await getQueuedPesajes();
+    await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(updatedQueue));
+    await updateSyncStatus();
+  } catch (error) {
+    console.error('Error al remover pesajes por índices:', error);
+  }
+}
 
-    if (queue.length === 0) {
-      console.log('La cola está vacía');
-      return;
-    }
+/**
+ * Limpia la cola de pesajes pendientes
+ */
+export async function clearQueue(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(OFFLINE_QUEUE_KEY);
+    await updateSyncStatus();
+  } catch (error) {
+    console.error('Error al limpiar la cola:', error);
+  }
+}
 
-    // Verificar IDs antes de filtrar
-    console.log(
-      'IDs en la cola actual:',
-      queue.map((item) => item.id || 'sin-id')
-    );
+/**
+ * Actualiza el estado de un pesaje en la cola
+ */
+export async function updatePesajeInQueue(
+  pesajeId: string,
+  updates: any
+): Promise<void> {
+  try {
+    const queueStr = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+    if (!queueStr) return;
 
-    // Filtrar la cola para mantener solo los elementos que NO están en successfulIds
-    const updatedQueue = queue.filter((item) => {
-      const itemId = item.id;
-      const shouldKeep = !successfulIds.includes(itemId);
-      console.log(`Evaluando ID: ${itemId}, Mantener: ${shouldKeep}`);
-      return shouldKeep;
+    const queue = JSON.parse(queueStr);
+    const updatedQueue = queue.map((p: any) => {
+      if (p.id === pesajeId) {
+        return { ...p, ...updates };
+      }
+      return p;
     });
 
-    // Guardar la cola actualizada
-    await AsyncStorage.setItem(KEY, JSON.stringify(updatedQueue));
-    console.log(
-      `Eliminados ${queue.length - updatedQueue.length} pesajes. Quedan ${
-        updatedQueue.length
-      }`
-    );
+    await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(updatedQueue));
   } catch (error) {
-    console.error('Error al eliminar pesajes de la cola:', error);
-    throw error;
+    console.error('Error al actualizar pesaje en la cola:', error);
   }
-};
+}
+
+/**
+ * Obtiene el estado de sincronización
+ */
+export async function getSyncStatus(): Promise<any> {
+  try {
+    const statusStr = await AsyncStorage.getItem(SYNC_STATUS_KEY);
+    return statusStr
+      ? JSON.parse(statusStr)
+      : { hasPending: false, pendingCount: 0 };
+  } catch (error) {
+    console.error('Error al obtener estado de sincronización:', error);
+    return { hasPending: false, pendingCount: 0 };
+  }
+}

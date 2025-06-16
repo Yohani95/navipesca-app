@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer, RouteProp } from '@react-navigation/native'; // Importar RouteProp
+import { NavigationContainer, RouteProp } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   createDrawerNavigator,
@@ -17,6 +17,7 @@ import HistorialPesajesScreen from '../screens/HistorialPesajesScreen';
 import { RootStackParamList, DrawerParamList } from './types';
 import { Text, View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import PesajesEnCursoScreen from '../screens/PesajesEnCursoScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<DrawerParamList>();
@@ -105,12 +106,15 @@ function AppDrawerNavigator() {
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={({
         navigation,
-        route, // Añadir route para conocer la pantalla actual
+        route,
       }: {
         navigation: DrawerNavigationProp<DrawerParamList>;
-        route: RouteProp<DrawerParamList, keyof DrawerParamList>; // Tipar route
+        route: RouteProp<DrawerParamList, keyof DrawerParamList>;
       }) => {
         const isHomeScreen = route.name === 'Home';
+        // Determinar el comportamiento del botón izquierdo según pantalla actual
+        const getCurrentScreen = route.name;
+
         return {
           headerShown: true,
           headerStyle: {
@@ -120,21 +124,33 @@ function AppDrawerNavigator() {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-          headerLeft: () => (
-            <>
+          headerLeft: () => {
+            // Solo mostrar el icono de menú (drawer) en la pantalla Home
+            if (isHomeScreen) {
+              return (
+                <TouchableOpacity
+                  onPress={() => navigation.toggleDrawer()}
+                  style={{ marginLeft: 15 }}
+                >
+                  <Icon name="menu" size={28} color="#FFFFFF" />
+                </TouchableOpacity>
+              );
+            }
+
+            // En otras pantallas, mostrar el botón de atrás que navegue a Home
+            return (
               <TouchableOpacity
                 onPress={() => {
-                  navigation.toggleDrawer(); // Abrir/cerrar drawer en Home
+                  // Esto asegura que el comportamiento del botón atrás sea
+                  // navegar a Home en lugar de a otra pantalla específica
+                  navigation.navigate('Home');
                 }}
                 style={{ marginLeft: 15 }}
               >
-                <Icon name={'menu'} size={28} color="#FFFFFF" />
+                <Icon name="arrow-left" size={28} color="#FFFFFF" />
               </TouchableOpacity>
-              {/* {!isHomeScreen && (
-                <Icon name={'arrow-left'} size={28} color="#FFFFFF" />
-              )} */}
-            </>
-          ),
+            );
+          },
           drawerActiveTintColor: '#005A9C',
           drawerInactiveTintColor: '#333333',
           drawerLabelStyle: {
@@ -155,7 +171,6 @@ function AppDrawerNavigator() {
                 {usuario?.cliente && (
                   <TouchableOpacity
                     onPress={() => {
-                      // Solo navegar a Home si NO estamos en la pantalla Home
                       if (!isHomeScreen) {
                         navigation.navigate('Home');
                       }
@@ -207,6 +222,7 @@ function AppDrawerNavigator() {
           },
         };
       }}
+      initialRouteName="Home"
     >
       <Drawer.Screen
         name="Home"
@@ -257,6 +273,22 @@ function AppDrawerNavigator() {
         }}
       />
       <Drawer.Screen
+        name="PesajesEnCurso"
+        component={PesajesEnCursoScreen}
+        options={{
+          title: 'Pesajes en Curso',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="clipboard-edit-outline" color={color} size={size} />
+          ),
+          drawerLabel: ({ focused, color }) => (
+            <View style={styles.drawerLabelContainer}>
+              <Text style={{ color, fontSize: 15 }}>Pesajes en Curso</Text>
+              <Icon name="chevron-right" color={color} size={22} />
+            </View>
+          ),
+        }}
+      />
+      <Drawer.Screen
         name="Sync"
         component={SyncScreen}
         options={{
@@ -289,19 +321,11 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         {usuario ? (
-          <Stack.Screen
-            name="AppDrawer" // Una ruta que contiene el Drawer
-            component={AppDrawerNavigator}
-            options={{ headerShown: false }} // Ocultar el header del Stack principal para el Drawer
-          />
+          <Stack.Screen name="AppDrawer" component={AppDrawerNavigator} />
         ) : (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
+          <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

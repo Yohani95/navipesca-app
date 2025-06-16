@@ -7,11 +7,11 @@ export default function useNetworkStatus() {
   const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      // Siempre "conectado" en web
-      setIsConnected(true);
-      return;
-    }
+    // if (Platform.OS === 'web') {
+    //   // Siempre "conectado" en web
+    //   setIsConnected(true);
+    //   return;
+    // }
 
     const unsubscribe = NetInfo.addEventListener((state) => {
       setIsConnected(state.isConnected ?? false);

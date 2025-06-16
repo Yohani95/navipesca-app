@@ -12,16 +12,17 @@ import {
 import { useAuth } from '../context/AuthContext';
 import ActionCard from '../components/ActionCard';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import useNetworkStatus from '../hooks/useNetworkStatus';
 
 const HomeScreen = ({ navigation }: any) => {
   const { usuario } = useAuth();
-
+  const isConnected = useNetworkStatus(); // Simulación de conexión a internet
   const navigationActions = [
     {
-      title: 'Nuevo Pesaje',
+      title: 'Pesajes',
       iconName: 'scale',
       color: '#64B5F6',
-      onPress: () => navigation.navigate('Pesaje'),
+      onPress: () => navigation.navigate('PesajesEnCurso'),
     },
     {
       title: 'Sincronizar',
@@ -122,7 +123,7 @@ const HomeScreen = ({ navigation }: any) => {
               <Text style={styles.sectionTitle}>Acciones Principales</Text>
               <View style={styles.actionsGrid}>
                 {navigationActions.map((action, index) => (
-                  <View key={index} style={styles.actionCardWrapper}>
+                  <View key={action.title} style={styles.actionCardWrapper}>
                     <ActionCard
                       title={action.title}
                       iconName={action.iconName}
@@ -135,18 +136,20 @@ const HomeScreen = ({ navigation }: any) => {
             </View>
 
             {/* Información adicional */}
-            <View style={styles.infoSection}>
-              <View style={styles.infoCard}>
-                <Icon name="information-outline" size={24} color="#64B5F6" />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoTitle}>Modo Offline Activado</Text>
-                  <Text style={styles.infoDescription}>
-                    Los pesajes se guardarán localmente hasta que tengas
-                    conexión
-                  </Text>
+            {!isConnected && (
+              <View style={styles.infoSection}>
+                <View style={styles.infoCard}>
+                  <Icon name="information-outline" size={24} color="#64B5F6" />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoTitle}>Modo Offline Activado</Text>
+                    <Text style={styles.infoDescription}>
+                      Los pesajes se guardarán localmente hasta que tengas
+                      conexión
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            )}
           </ScrollView>
         </SafeAreaView>
       </View>
@@ -262,7 +265,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     borderRadius: 12,
     borderLeftWidth: 4,
-    backdropFilter: 'blur(10px)', // Para web
+
     ...Platform.select({
       ios: {
         shadowColor: '#64748B',
@@ -317,7 +320,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(191, 219, 254, 0.8)',
-    backdropFilter: 'blur(10px)', // Para web
     ...Platform.select({
       web: {
         backdropFilter: 'blur(10px)',

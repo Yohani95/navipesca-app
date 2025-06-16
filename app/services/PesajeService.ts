@@ -9,15 +9,45 @@ const controllerPath = '/protected/pesaje'; // Ajusta 'weight' si tu ruta es dif
 export const PesajeService = {
   // El token ya no se pasa como argumento, apiClient lo maneja.
   async createPesaje(pesaje: PesajeData) {
-    // apiClient antepondrá API_URL. La ruta completa será API_URL/api/protected/weight
-    const response = await apiClient.post(`${controllerPath}`, pesaje);
-    console.log('Respuesta de createPesaje:', response.data);
-    return response.data;
+    try {
+      // Asegurarnos de limpiar completamente el objeto antes de enviar
+      const pesajeToSend = { ...pesaje };
+
+      // console.log(
+      //   'PesajeService - Enviando al servidor:',
+      //   JSON.stringify(pesajeToSend, null, 2)
+      // );
+
+      // apiClient antepondrá API_URL. La ruta completa será API_URL/api/protected/weight
+      const response = await apiClient.post(`${controllerPath}`, pesajeToSend);
+      // console.log(
+      //   'PesajeService - Respuesta del servidor:',
+      //   JSON.stringify(response.data, null, 2)
+      // );
+      return response.data;
+    } catch (error: any) {
+      console.error('PesajeService - Error al crear pesaje:', error.message);
+      if (error.response) {
+        console.error(
+          'PesajeService - Detalles del error:',
+          JSON.stringify(
+            {
+              status: error.response.status,
+              data: error.response.data,
+              headers: error.response.headers,
+            },
+            null,
+            2
+          )
+        );
+      }
+      throw error;
+    }
   },
 
   async getPesajes() {
     const response = await apiClient.get(`${controllerPath}`);
-    console.log('Respuesta de getPesajes:', response.data[0]);
+    // console.log('Respuesta de getPesajes:', response.data[0]);
     return response.data;
   },
 

@@ -27,7 +27,7 @@ const isProduction = currentEnvironment === ENV.prod;
 // URLs de API para diferentes entornos
 const API_URLS = {
   [ENV.dev]: {
-    LOCAL_IP: '192.168.1.7',
+    LOCAL_IP: '192.168.1.9',
     API_PORT: '3000',
     API_BASE_PATH: '/api',
   },
